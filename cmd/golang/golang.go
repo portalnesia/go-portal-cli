@@ -9,11 +9,6 @@ package golang
 
 import (
 	"github.com/spf13/cobra"
-	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
-)
-
-var (
-	globalConfig config2.GlobalConfig
 )
 
 var golangCmd = &cobra.Command{
@@ -25,9 +20,6 @@ var golangCmd = &cobra.Command{
 
 func Init() *cobra.Command {
 	golangCmd.AddCommand(initCmd)
+	golangCmd.AddCommand(newServiceCmd)
 	return golangCmd
-}
-
-func init() {
-	golangCmd.PersistentFlags().BoolVarP(&globalConfig.ServerDirectory, "server", "s", true, "Handler, routes, middleware, etc files in server directory")
 }

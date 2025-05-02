@@ -26,18 +26,23 @@ func PromptInitBool(name string, value *bool) error {
 	return nil
 }
 
-func PromptInitString(name string, value *string, forcePrompt ...bool) error {
+// PromptInitString
+//
+// forcePrompt: true, will force when value is empty, otherwise when value is empty, it will skip
+// optional: true, will skip if empty
+func PromptInitString(name string, value *string, forcePromptAndOptional ...bool) error {
 	yellow := color.New(color.FgYellow)
 
 	var tmp string
 	if value != nil {
 		tmp = *value
 	}
-	if len(forcePrompt) > 0 && forcePrompt[0] && tmp == "" {
+	if len(forcePromptAndOptional) > 0 && forcePromptAndOptional[0] && tmp == "" {
 		_, _ = yellow.Printf("%s? ", name)
 		_, _ = fmt.Scanln(&tmp)
 	}
-	if tmp == "" {
+
+	if (len(forcePromptAndOptional) <= 1 || (len(forcePromptAndOptional) > 1 && !forcePromptAndOptional[1])) && tmp == "" {
 		return fmt.Errorf("%s required", name)
 	}
 	*value = tmp

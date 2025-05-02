@@ -11,18 +11,19 @@ import (
 	"go/ast"
 )
 
-type GlobalConfig struct {
-	ServerDirectory bool
-}
-
 type InitConfig struct {
-	Global GlobalConfig
-
 	Module string
 
 	Redis      bool
 	Firebase   bool
 	Handlebars bool
+}
+
+type NewServiceConfig struct {
+	Module  string
+	Name    string
+	Path    string
+	Version string
 }
 
 type Builder struct {

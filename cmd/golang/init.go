@@ -54,7 +54,6 @@ var initCmd = &cobra.Command{
 				return
 			}
 		}
-		cfg.Global = globalConfig
 
 		appCtx := cmd.Context().Value("app")
 		if appCtx == nil {

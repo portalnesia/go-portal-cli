@@ -22,7 +22,6 @@ import (
 
 type Golang struct {
 	app *config.App
-	cfg config2.GlobalConfig
 }
 
 func New(app *config.App) *Golang {

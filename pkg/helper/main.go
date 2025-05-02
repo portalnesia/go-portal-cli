@@ -8,8 +8,12 @@
 package helper
 
 import (
+	"bufio"
+	"fmt"
 	"go/ast"
 	"go/token"
+	"os"
+	"strings"
 )
 
 func BodyListNewLines() ast.Stmt {
@@ -19,4 +23,28 @@ func BodyListNewLines() ast.Stmt {
 			Value: ``,
 		}, // dummy expression, tidak valid
 	}
+}
+
+// GetModuleName reads the go.mod file and returns the module name
+func GetModuleName(goModPath string) (string, error) {
+	file, err := os.Open(goModPath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, "module ") {
+			moduleName := strings.TrimSpace(strings.TrimPrefix(line, "module "))
+			return moduleName, nil
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+
+	return "", fmt.Errorf("module name not found in %s", goModPath)
 }
