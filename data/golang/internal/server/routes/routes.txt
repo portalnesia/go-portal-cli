@@ -1,0 +1,76 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package routes
+
+import (
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/favicon"
+	"github.com/gofiber/fiber/v2/middleware/filesystem"
+	"net/http"
+	"APP_NAME/internal/server/config"
+)
+
+type Routes struct {
+	app   *config.App
+	fiber *fiber.App
+}
+
+func NewRoutes(app *config.App, fiberApp *fiber.App) {
+	routes := &Routes{
+		app:   app,
+		fiber: fiberApp,
+	}
+
+	routes.setup()
+}
+
+func (r *Routes) setup() {
+	r.fiber.Get("/", func(c *fiber.Ctx) error {
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"error":   false,
+			"message": "API Uptime",
+		})
+	})
+
+	r.fiber.Get("/version", func(c *fiber.Ctx) error {
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"error":   false,
+			"message": "Success",
+			"data": map[string]string{
+				"version": r.app.App.GetVersion().String(),
+			},
+		})
+	})
+
+	r.initRoutes()
+
+	publicFS := http.FS(r.app.App.Embed.Public)
+
+	r.fiber.Use(favicon.New(favicon.Config{
+		File:       "public/favicon.ico",
+		FileSystem: publicFS,
+		URL:        "/favicon.ico",
+	}))
+
+	r.fiber.Use(filesystem.New(filesystem.Config{
+		Root:         publicFS,
+		NotFoundFile: "404.html",
+	}))
+
+	r.fiber.Use(func(c *fiber.Ctx) error {
+		err := r.app.Exception.EndpointNotFound()
+		return c.Status(err.Status).JSON(fiber.Map{
+			"data":  nil,
+			"error": err,
+		})
+	})
+}
+
+func (r *Routes) initRoutes() {
+
+}

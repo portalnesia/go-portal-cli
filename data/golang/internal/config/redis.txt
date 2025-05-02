@@ -1,0 +1,42 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package config
+
+import (
+	"fmt"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/session"
+	fiberredis "github.com/gofiber/storage/redis/v3"
+	"github.com/google/uuid"
+	"time"
+	"github.com/spf13/viper"
+)
+
+func initFiberStorage(clientName string) *fiberredis.Storage {
+	redisInstance := fiberredis.New(fiberredis.Config{
+		Host:       viper.GetString("redis.host"),
+		Port:       viper.GetInt("redis.port"),
+		Username:   viper.GetString("redis.user"),
+		Password:   viper.GetString("redis.password"),
+		Database:   viper.GetInt("redis.database"),
+		ClientName: clientName,
+	})
+	return redisInstance
+}
+
+func initSession(storage fiber.Storage) (sessionStore *session.Store) {
+	config := session.Config{Expiration: 1 * time.Hour, CookieSecure: isProduction, CookiePath: "/", CookieHTTPOnly: true, KeyLookup: "cookie:APP_NAMESESSID", KeyGenerator: func() string {
+		return "app_name:session:" + uuid.New().String()
+	}, Storage: storage}
+	sessionStore = session.New(config)
+	return
+}
+
+func (a *App) GetRedisKeyf(key string, format ...any) string {
+	return "app_name:" + fmt.Sprintf(key, format...)
+}

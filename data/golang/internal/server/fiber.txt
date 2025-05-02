@@ -1,0 +1,137 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package server
+
+import (
+	"errors"
+	"fmt"
+	"github.com/goccy/go-json"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/compress"
+	"github.com/gofiber/fiber/v2/middleware/earlydata"
+	"github.com/gofiber/fiber/v2/middleware/etag"
+	"github.com/gofiber/fiber/v2/middleware/idempotency"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/fiber/v2/middleware/requestid"
+	"APP_NAME/internal/cerror"
+	"APP_NAME/internal/config"
+	config2 "APP_NAME/internal/server/config"
+	"APP_NAME/internal/server/middleware"
+	"APP_NAME/internal/server/routes"
+	"strings"
+	"time"
+)
+
+type Server struct {
+	app   *config.App
+	Fiber *fiber.App
+}
+
+func New(app *config.App) (server *Server) {
+	fiber.SetParserDecoder(fiber.ParserConfig{
+		IgnoreUnknownKeys: true,
+		ParserType:        registerDecoder(),
+		ZeroEmpty:         true,
+	})
+
+	exc := cerror.New()
+
+	fiberApp := fiber.New(fiber.Config{
+		BodyLimit:          10 * 1024 * 1024,
+		EnableIPValidation: true,
+		JSONEncoder:        json.Marshal,
+		JSONDecoder:        json.Unmarshal,
+		ErrorHandler: func(c *fiber.Ctx, errHandler error) error {
+			var err *cerror.Error
+			if errors.As(errHandler, &err) && err != nil {
+				app.Log.Debug("error-handler").Str("name", err.Name).Int("code", err.Code).Int("status", err.Status).Stack().Msgf("%s", err.Description)
+				if err.Name == "internal_server_error" || err.Reason != nil {
+					fmt.Println(err.ErrorStack())
+				}
+
+				if err.Data != nil {
+					return c.Status(err.Status).JSON(fiber.Map{
+						"data":  err.Data,
+						"error": err,
+					})
+				}
+				return c.Status(err.Status).JSON(fiber.Map{
+					"data":  nil,
+					"error": err,
+				})
+			} else {
+				err = exc.Server()
+				errMsg := strings.ToLower(errHandler.Error())
+				if !strings.Contains(errMsg, "error when reading request headers") {
+					app.Log.Error(errHandler, "error-handler").Stack().Msg("Error")
+				}
+
+				err.Reason = &cerror.Reason{
+                    String: errHandler.Error(),
+                    Error:  errHandler,
+                }
+				return c.Status(err.Status).JSON(fiber.Map{
+					"data":  nil,
+					"error": err,
+				})
+			}
+		},
+		AppName: "APP_NAME_UCWORDS",
+	})
+
+	// Recover
+	fiberApp.Use(recover.New(recover.Config{
+		EnableStackTrace: true,
+	}))
+
+	if !app.IsProduction {
+		// Logger
+		fiberApp.Use(logger.New())
+	}
+
+	fiberApp.Use(earlydata.New())
+
+	// Compress
+	fiberApp.Use(compress.New(compress.Config{
+		Level: compress.LevelBestSpeed,
+	}))
+
+	// Etag
+	fiberApp.Use(etag.New())
+
+	// Request ID
+	fiberApp.Use(requestid.New())
+
+	// Middleware
+	fiberApp.Use(middleware.Init(app))
+
+	// Cors
+
+	// rate_limit middleware
+
+	fiberApp.Use(idempotency.New())
+
+	appServer := &config2.App{
+		Exception:  exc,
+		App:        app,
+	}
+	routes.NewRoutes(appServer, fiberApp)
+
+	return &Server{
+		app:   app,
+		Fiber: fiberApp,
+	}
+}
+
+func (f *Server) Close() {
+	f.app.Log.Info("system").Msg("Closing server...")
+	if err := f.Fiber.ShutdownWithTimeout(time.Second * 10); err != nil {
+		f.app.Log.Error(err, "server").Msg("Error when shutting down server")
+	}
+}

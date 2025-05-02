@@ -1,0 +1,36 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package config
+
+import "github.com/coreos/go-semver/semver"
+
+var version = semver.New(tmpVersion)
+
+func GetVersion() *semver.Version {
+	return version
+}
+
+func (a *App) GetVersion() *semver.Version {
+	return version
+}
+
+func InitVersion(tag, commitRef string) {
+	if tag != "" {
+		tmpVersion = tag
+	}
+	if commitRef != "" {
+		if len(commitRef) > 7 {
+			commitRef = commitRef[:7]
+		}
+		tmpVersion += "-" + commitRef
+	} else {
+		tmpVersion += "-local"
+	}
+
+	version = semver.New(tmpVersion)
+}

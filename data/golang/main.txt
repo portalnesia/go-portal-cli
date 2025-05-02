@@ -1,0 +1,40 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+package main
+
+import (
+	"embed"
+	"APP_NAME/cmd"
+	"APP_NAME/internal/config"
+)
+
+//go:embed public/*
+var embedPublic embed.FS
+
+//go:embed data/*
+var embedData embed.FS
+
+//go:embed data/*
+var embedMigrations embed.FS
+
+var (
+	tag  string
+	commit string
+)
+
+func init() {
+	config.InitVersion(tag, commit)
+}
+
+func main() {
+	emb := &config.Embed{
+		Public: embedPublic,
+		Data:   embedData,
+		Migration: embedMigrations,
+	}
+	cmd.Execute(emb, tag)
+}

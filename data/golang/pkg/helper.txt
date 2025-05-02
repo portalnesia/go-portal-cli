@@ -1,0 +1,167 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package helper
+
+import (
+	"errors"
+	"fmt"
+	"github.com/dromara/carbon/v2"
+	"github.com/goccy/go-json"
+	"github.com/spf13/viper"
+	"go.portalnesia.com/nullable"
+	util "go.portalnesia.com/utils"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
+)
+
+func getCarbonFromStr(data string) *carbon.Carbon {
+	// Check if int64
+	dataInt, err := strconv.ParseInt(data, 10, 64)
+	if err == nil {
+		if len(data) == 10 {
+			return carbon.CreateFromTimestamp(dataInt)
+		} else {
+			return carbon.CreateFromTimestampMilli(dataInt)
+		}
+	}
+	return carbon.Parse(data)
+}
+
+// GetCarbon Create or Parse Date
+// GetCarbon() -> Create Carbon
+// GetCarbon(string|carbon) -> Parse Carbon
+// GetCarbon(string|carbon, defaultNow=false) -> ParseCarbon
+func GetCarbon(argument ...interface{}) *carbon.Carbon {
+	var data *carbon.Carbon
+	defaultNow := false
+
+	if len(argument) >= 2 {
+		switch v := argument[1].(type) {
+		case bool:
+			defaultNow = v
+		default:
+
+		}
+	}
+
+	if len(argument) == 0 {
+		data = carbon.Now()
+	} else if len(argument) > 0 {
+		switch v := argument[0].(type) {
+		case string:
+			data = getCarbonFromStr(v)
+		case *carbon.Carbon:
+			data = v
+		case carbon.Carbon:
+			data = &v
+		case []byte:
+			data = getCarbonFromStr(string(v))
+		case time.Time:
+			data = carbon.CreateFromStdTime(v)
+		case int64:
+			if vStr := strconv.FormatInt(v, 10); len(vStr) == 10 {
+				data = carbon.CreateFromTimestamp(v)
+			} else {
+				data = carbon.CreateFromTimestampMilli(v)
+			}
+		default:
+
+		}
+	}
+	if !data.IsValid() {
+		if defaultNow {
+			data = carbon.Now()
+		} else {
+			// panic(response.InvalidParameter(nil, "date"))
+			panic(errors.New("invalid date"))
+		}
+	}
+	return data
+}
+
+func NowPtr() *time.Time {
+	now := time.Now()
+	return &now
+}
+
+func parsePath(path string) string {
+	if path != "" {
+		if path[0:1] != "/" {
+			path = fmt.Sprintf("/%s", path)
+		}
+	}
+	return path
+}
+
+func StaticUrl(path string) string {
+	return fmt.Sprintf("%s%s", viper.GetString("link.static"), parsePath(path))
+}
+
+func StaticUrlf(path string, arg ...any) string {
+	path = fmt.Sprintf(path, arg...)
+	return fmt.Sprintf("%s%s", viper.GetString("link.static"), parsePath(path))
+}
+
+func ApiUrl(path string) string {
+	return fmt.Sprintf("%s/api%s", viper.GetString("link.api"), parsePath(path))
+}
+
+func ApiUrlf(path string, arg ...any) string {
+	path = fmt.Sprintf(path, arg...)
+	return fmt.Sprintf("%s%s", viper.GetString("link.api"), parsePath(path))
+}
+
+func WebUrl(path string) string {
+	return fmt.Sprintf("%s%s", viper.GetString("link.web"), parsePath(path))
+}
+
+func WebUrlf(path string, arg ...any) string {
+	path = fmt.Sprintf(path, arg...)
+	return fmt.Sprintf("%s%s", viper.GetString("link.web"), parsePath(path))
+}
+
+func AnalyzeStaticUrl(path string) string {
+	if util.IsUrl(path) {
+		return StaticUrl(fmt.Sprintf("img/url?image=%s", url.QueryEscape(path)))
+	} else {
+		return StaticUrl(fmt.Sprintf("img/content?image=%s", url.QueryEscape(path)))
+	}
+}
+
+func ProfileUrl(path *string) nullable.String {
+	str := nullable.NewString("", true, false)
+
+	p := "images/avatar.png"
+	if path != nil && *path != p {
+		path_str := *path
+		if strings.HasPrefix(path_str, "http") {
+			str.Valid = true
+			str.Data = StaticUrlf("img/url?image=%s", url.QueryEscape(*path))
+		} else {
+			str.Valid = true
+			str.Data = StaticUrlf("img/content?image=%s", url.QueryEscape(*path))
+		}
+	}
+
+	return str
+}
+
+func ToMap[D any](data D) (map[string]any, error) {
+	dt, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	var res map[string]any
+	err = json.Unmarshal(dt, &res)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}

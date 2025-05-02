@@ -1,0 +1,74 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package cerror
+
+import (
+	"errors"
+	"fmt"
+	"github.com/go-playground/validator/v10"
+	"strings"
+)
+
+const (
+	ErrorBadParameter     = 700
+	ErrorInvalidParameter = 710
+	NameBadParameter      = "bad_parameter"
+)
+
+func (e *Exception) BadParameter(whatMissing string) *Error {
+	msg := fmt.Sprintf("Missing `%s` parameter", whatMissing)
+
+	return newError(400, ErrorBadParameter, NameBadParameter, msg)
+}
+
+func (e *Exception) InvalidParameter(whatInvalid string, other ...any) *Error {
+	msg := fmt.Sprintf("Invalid `%s` parameter", whatInvalid)
+
+	var err error
+	if len(other) > 0 {
+		for _, a := range other {
+			switch v := a.(type) {
+			case string:
+				if v != "" {
+					msg = msg + ". " + v
+				}
+			case error:
+				err = v
+			}
+		}
+	}
+
+	return newError(400, ErrorInvalidParameter, NameBadParameter, msg, err)
+}
+
+func (e *Exception) ValidateError(err error) *Error {
+	var invalidValidationError *validator.InvalidValidationError
+	if errors.As(err, &invalidValidationError) {
+		return e.Server(err)
+	}
+	for _, er := range err.(validator.ValidationErrors) {
+		return newError(400, ErrorInvalidParameter, "bad_parameter", msgForTag(er), er)
+	}
+	return newError(400, ErrorInvalidParameter, "bad_parameter", "Invalid request", err)
+}
+
+func msgForTag(fe validator.FieldError) string {
+	switch fe.Tag() {
+	case "required":
+		return fmt.Sprintf("Missing parameter `%s`", fe.Field())
+	case "email":
+		return "Invalid email"
+	case "oneof":
+		return fmt.Sprintf("Parameter `%s` must be one of: %s", fe.Field(), strings.ReplaceAll(fe.Param(), " ", ", "))
+	case "min":
+		return fmt.Sprintf("Parameter `%s` must have at least %s characters", fe.Field(), fe.Param())
+	case "max":
+		return fmt.Sprintf("Parameter `%s` must have a maximum of %s characters", fe.Field(), fe.Param())
+	}
+	return fmt.Sprintf("Invalid `%s` parameter", fe.Field())
+}

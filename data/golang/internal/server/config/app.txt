@@ -1,0 +1,86 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package config
+
+import (
+	context2 "context"
+	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
+	"os"
+	"APP_NAME/internal/cerror"
+	pnapp "APP_NAME/internal/config"
+	"APP_NAME/internal/context"
+	"APP_NAME/internal/request"
+)
+
+type App struct {
+	Exception  *cerror.Exception
+	App        *pnapp.App
+	// Middle
+	// Repo
+}
+
+func (a *App) GetCtx(c *fiber.Ctx) (*context.Context, error) {
+	ctx, ok := c.Locals("ctx").(*context.Context)
+	if !ok {
+		a.App.Log.Warn("server").Msg("Failed to get context")
+		return nil, a.Exception.Server()
+	}
+	return ctx, nil
+}
+
+func (a *App) NewService(c *fiber.Ctx, handler func(ctx *context.Context, query *request.Request, trxDb *gorm.DB) error) error {
+	var (
+		req request.Request
+	)
+
+	ctx, err := a.GetCtx(c)
+	if err != nil {
+		return err
+	}
+
+	if err = c.QueryParser(&req); err != nil {
+		a.App.Log.Error(err, "server").Msg("Failed to parse query request")
+		return a.Exception.InvalidParameter("request", err)
+	}
+	req.Init(ctx)
+
+	var errorTrx error
+
+	ct := context2.WithValue(c.Context(), "ctx", ctx)
+	trxDb := a.App.DB.Session(&gorm.Session{NewDB: true}).Begin().WithContext(ct)
+	errorTrx = handler(ctx, &req, trxDb)
+	if errorTrx != nil {
+		trxDb.Rollback()
+	} else {
+		trxDb.Commit()
+	}
+
+	{{IF_REDIS}}
+
+	if tmp := c.Locals("remove_tmp_file"); tmp != nil {
+		if tmpPaths, ok := tmp.([]string); ok && len(tmpPaths) > 0 {
+			// remove temp file
+			go func() {
+				for _, tmpPath := range tmpPaths {
+					if _, err = os.Stat(tmpPath); err == nil {
+						if errRemove := os.Remove(tmpPath); errRemove != nil {
+							a.App.Log.Error(err, "response").Msg("Error remove temp saved_file")
+						}
+					}
+				}
+			}()
+		}
+	}
+
+	if errorTrx != nil {
+		return errorTrx
+	}
+
+	return nil
+}

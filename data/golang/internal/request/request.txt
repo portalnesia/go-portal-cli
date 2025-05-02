@@ -1,0 +1,79 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package request
+
+import (
+	"APP_NAME/internal/context"
+	"strings"
+	"sync"
+)
+
+type Request struct {
+	Page      int              `query:"page"`
+	Total     int64            `query:"-"`
+	PageSize  int              `query:"page_size"`
+	Cursor    int64            `query:"cursor"`
+	Start     int              `query:"-"`
+	Q         string           `query:"q"`
+	ctx       *context.Context `query:"-"`
+	done      bool             `query:"-"`
+	Order     string           `query:"order"`
+
+	mux sync.RWMutex
+}
+
+func (d *Request) GetCursor() int64 {
+	return d.Cursor
+}
+
+func (d *Request) GetPageSize() int {
+	d.mux.RLock()
+	defer d.mux.RUnlock()
+	return d.PageSize
+}
+
+func (d *Request) GetStart() int {
+	d.mux.RLock()
+	defer d.mux.RUnlock()
+	return d.Start
+}
+
+func (d *Request) GetPage() int {
+	d.mux.RLock()
+	defer d.mux.RUnlock()
+	return d.Page
+}
+
+func (d *Request) Init(ctx *context.Context) {
+	d.mux.Lock()
+	defer d.mux.Unlock()
+
+	if d.done {
+		return
+	}
+
+	d.ctx = ctx
+	if d.Page == 0 {
+		d.Page = 1
+	}
+	if d.PageSize == 0 || d.PageSize > 50 {
+		d.PageSize = 15
+	}
+
+	if d.Q != "" {
+		d.Q = strings.ToLower(d.Q)
+	}
+
+	start := 0
+	if d.Page > 1 {
+		start = int(d.Page)*d.PageSize - d.PageSize
+	}
+	d.Start = start
+
+	d.done = true
+}

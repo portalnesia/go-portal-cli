@@ -1,0 +1,77 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package config
+
+import (
+	"github.com/gofiber/fiber/v2"
+	"go.portalnesia.com/nullable"
+	"APP_NAME/pkg/helper"
+)
+
+type ResponseData struct {
+	Data    *nullable.Type[any] `json:"data,omitempty"`
+	Message string              `json:"message"`
+}
+
+func (a *App) Response(c *fiber.Ctx, data any, message ...any) error {
+	msg := "Success"
+	httpCode := 200
+
+	var responseData *nullable.Type[any] = nil
+
+	if data == nil {
+		responseData = nullable.NewTypePtr(data, true, false)
+	} else {
+		switch dt := data.(type) {
+		case bool:
+			if !dt {
+				responseData = nil
+			} else {
+				var temp any = dt
+				responseData = nullable.NewTypePtr(temp, true, true)
+			}
+		default:
+			responseData = nullable.NewTypePtr(data, true, true)
+		}
+	}
+
+	var resp any = ResponseData{
+		Message: msg,
+		Data:    responseData,
+	}
+
+	if len(message) > 0 {
+		for _, m := range message {
+			switch v := m.(type) {
+			case string:
+				if v == "map_all_data" && responseData != nil && responseData.Valid {
+					dataMap, err := helper.ToMap(responseData.Data)
+					if err != nil {
+						dataMap["message"] = msg
+						dataMap["data"] = responseData
+						resp = dataMap
+					}
+				} else if v == "saved" {
+					msg = "Saved"
+				} else if v == "deleted" {
+					msg = "Deleted"
+				} else if v == "removed" {
+					msg = "Removed"
+				} else if v != "" {
+					msg = v
+				}
+			case int:
+				if v >= 100 {
+					httpCode = v
+				}
+			}
+		}
+	}
+
+	return c.Status(httpCode).JSON(resp)
+}

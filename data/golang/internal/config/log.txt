@@ -1,0 +1,66 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package config
+
+import (
+	"fmt"
+	"github.com/rs/zerolog"
+)
+
+var Log Logger
+
+type Logger struct {
+	logger zerolog.Logger
+}
+
+func (l *Logger) WithField(ctx func(l zerolog.Context) zerolog.Context) *Logger {
+	childLogger := ctx(l.logger.With())
+	return &Logger{logger: childLogger.Logger()}
+}
+
+func (l *Logger) WithID(id string) *Logger {
+	childLogger := l.logger.With().Str("id", id)
+	return &Logger{logger: childLogger.Logger()}
+}
+
+func (l *Logger) WithIDf(id string, v ...any) *Logger {
+	childLogger := l.logger.With().Str("id", fmt.Sprintf(id, v...))
+	return &Logger{logger: childLogger.Logger()}
+}
+
+func (l *Logger) Debug(service string, err ...error) *zerolog.Event {
+	tmp := l.logger.Debug().Str(service, service)
+	if len(err) > 0 {
+		tmp = tmp.Err(err[0])
+	}
+	return tmp
+}
+
+func (l *Logger) Info(service string, err ...error) *zerolog.Event {
+	tmp := l.logger.Info().Str(service, service)
+	if len(err) > 0 {
+		tmp = tmp.Err(err[0])
+	}
+	return tmp
+}
+
+func (l *Logger) Warn(service string, err ...error) *zerolog.Event {
+	tmp := l.logger.Error().Str(service, service)
+	if len(err) > 0 {
+		tmp = tmp.Err(err[0])
+	}
+	return tmp
+}
+
+func (l *Logger) Error(err error, service string) *zerolog.Event {
+	return l.logger.Error().Err(err).Str(service, service)
+}
+
+func (l *Logger) Fatal(err error, service string) *zerolog.Event {
+	return l.logger.Fatal().Err(err).Str(service, service)
+}

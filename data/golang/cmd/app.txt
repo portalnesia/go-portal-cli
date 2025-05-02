@@ -1,0 +1,48 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package cmd
+
+import (
+	"github.com/spf13/cobra"
+	"APP_NAME/internal/config"
+)
+
+var appConfig *config.Config
+
+func addCommands(rootCmd *cobra.Command) {
+	rootCmd.AddCommand(startCmd)
+
+	// mark completion hidden
+	rootCmd.AddCommand(completionCommand)
+}
+
+// Execute adds all child commands to the root command and sets flags appropriately.
+// This is called by main.main(). It only needs to happen once to the rootCmd.
+func Execute(emb *config.Embed, tag string) {
+	rootCmd := &cobra.Command{
+		Use:     "CLI_NAME",
+		Short: "A brief description of your command",
+        Long: `A longer description that spans multiple lines and likely contains examples
+and usage of using your command. For example:
+
+Cobra is a CLI library for Go that empowers applications.
+This application is a tool to generate the needed files
+to quickly create a Cobra application.`,
+		Version: config.GetVersion().String(),
+	}
+
+	appConfig = &config.Config{
+		Embed: *emb,
+		Tag: tag,
+	}
+	addCommands(rootCmd)
+	err := rootCmd.Execute()
+	if err != nil {
+		panic(err)
+	}
+}

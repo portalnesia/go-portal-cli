@@ -1,0 +1,38 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package config
+
+import (
+	"github.com/aymerick/raymond"
+	"app_name/pkg/helper"
+	"strings"
+)
+
+func initHandlebars() {
+	raymond.RegisterHelper("split", func(str string, key string) []string {
+		if key == `{-n}` {
+			key = "\n"
+		}
+		return strings.Split(str, key)
+	})
+	raymond.RegisterHelper("isEmpty", func(str string) bool {
+		return len(str) == 0
+	})
+	raymond.RegisterHelper("upperCase", func(str string) raymond.SafeString {
+		return raymond.SafeString(strings.ToUpper(str))
+	})
+	raymond.RegisterHelper("webUrl", func(path string) string {
+		return helper.WebUrl(path)
+	})
+	raymond.RegisterHelper("apiUrl", func(path string) string {
+        return helper.ApiUrl(path)
+    })
+    raymond.RegisterHelper("staticUrl", func(path string) string {
+        return helper.StaticUrl(path)
+    })
+}

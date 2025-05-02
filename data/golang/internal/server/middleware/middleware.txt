@@ -1,0 +1,54 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package middleware
+
+import (
+	"fmt"
+	"github.com/gofiber/fiber/v2"
+	"github.com/mssola/user_agent"
+	"APP_NAME/internal/config"
+	"APP_NAME/internal/context"
+)
+
+func Init(app *config.App) func(*fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
+		c.Set("Vary", "Accept-Encoding")
+
+		ip := SetUpIP(app, c)
+		browser, browserStr := SetUpBrowser(c)
+
+		ctx := context.Context{
+			IP:            ip,
+			Browser:       browser,
+			BrowserString: browserStr,
+		}
+		c.Locals("ctx", &ctx)
+
+		return c.Next()
+	}
+}
+
+func SetUpIP(app *config.App, c *fiber.Ctx) string {
+	ip := c.Get("x-local-api", "")
+    if ip == "" {
+        ip = c.Get("cf-connecting-ip", "")
+    }
+    if ip == "" {
+        ip = c.IP()
+    }
+	return ip
+}
+
+func SetUpBrowser(c *fiber.Ctx) (user_agent.UserAgent, string) {
+	browser := user_agent.New(c.Get("user-agent"))
+	br, ver := browser.Browser()
+	browserString := fmt.Sprintf("%s, %s %s", browser.OS(), br, ver)
+
+	return *browser, browserString
+}
+
