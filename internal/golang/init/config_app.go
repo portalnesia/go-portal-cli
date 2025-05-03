@@ -5,7 +5,7 @@
  * Written by Putu Aditya <aditya@portalnesia.com>
  */
 
-package s_config
+package ginit
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ import (
 	"sync"
 )
 
-func (c *Config) initConfigApp(wg *sync.WaitGroup, res chan<- config2.Builder) {
+func (c *initType) initConfigApp(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 
 	_, _ = color.New(color.FgBlue).Printf("Generating internal/config/app.go\n")
@@ -71,7 +71,7 @@ func (c *Config) initConfigApp(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	}
 }
 
-func (c *Config) appInitNew(decls []ast.Decl) []ast.Decl {
+func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 	// VAR
 	specs := []ast.Spec{
 		&ast.ValueSpec{
@@ -1013,7 +1013,7 @@ func (c *Config) appInitNew(decls []ast.Decl) []ast.Decl {
 	return decls
 }
 
-func (c *Config) appInitClose(decls []ast.Decl) []ast.Decl {
+func (c *initType) appInitClose(decls []ast.Decl) []ast.Decl {
 	bodyList := &ast.BlockStmt{
 		List: []ast.Stmt{
 			// a.Log.Info("system").Msg("Closing application...")
@@ -1329,7 +1329,7 @@ func (c *Config) appInitClose(decls []ast.Decl) []ast.Decl {
 	return decls
 }
 
-func (c *Config) appInitType(decls []ast.Decl) []ast.Decl {
+func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 	// embed =
 	decls = append(decls, &ast.GenDecl{
 		Tok: token.TYPE,

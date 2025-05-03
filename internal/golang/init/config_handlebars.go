@@ -5,7 +5,7 @@
  * Written by Putu Aditya <aditya@portalnesia.com>
  */
 
-package s_config
+package ginit
 
 import (
 	"github.com/fatih/color"
@@ -14,7 +14,7 @@ import (
 	"sync"
 )
 
-func (c *Config) initConfigHandlebars(wg *sync.WaitGroup, res chan<- config2.Builder) {
+func (c *initType) initConfigHandlebars(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 	_, _ = color.New(color.FgBlue).Printf("Generating internal/config/handlebars.go\n")
 

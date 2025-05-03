@@ -13,11 +13,7 @@ import (
 	"fmt"
 	"github.com/fatih/color"
 	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
-	scmd "go.portalnesia.com/portal-cli/internal/golang/structure/cmd"
-	sconfig "go.portalnesia.com/portal-cli/internal/golang/structure/intrnl/config"
-	sserver "go.portalnesia.com/portal-cli/internal/golang/structure/intrnl/server"
-	sstatic "go.portalnesia.com/portal-cli/internal/golang/structure/intrnl/static"
-	spkg "go.portalnesia.com/portal-cli/internal/golang/structure/pkg"
+	ginit "go.portalnesia.com/portal-cli/internal/golang/init"
 	"os"
 	"sync"
 )
@@ -26,26 +22,19 @@ func (g *Golang) Init(cfg config2.InitConfig) error {
 	_, _ = color.New(color.FgBlue).Printf("\nPlease wait...\n")
 
 	var (
-		i       = 6
+		i       = 2
 		resChan = make(chan []config2.Builder, i)
 		wg      = &sync.WaitGroup{}
 	)
 	wg.Add(i)
 
 	go g.generateConfig(wg, cfg, resChan)
-	go sconfig.Init(wg, g.app, &cfg, resChan)
-	go spkg.Init(wg, g.app, &cfg, resChan)
-	go sstatic.Init(wg, g.app, &cfg, resChan)
-	go sserver.Init(wg, g.app, &cfg, resChan)
-	go scmd.Init(wg, g.app, &cfg, resChan)
+	go ginit.Init(wg, g.app, &cfg, resChan)
 
 	wg.Wait()
 	close(resChan)
 
 	dirs := []string{
-		g.app.Dir("data"),
-		g.app.Dir("public"),
-		g.app.Dir("migrations"),
 		g.app.Dir("internal/server/handler"),
 		g.app.Dir("internal/server/usecase"),
 	}

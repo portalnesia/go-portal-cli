@@ -5,7 +5,7 @@
  * Written by Putu Aditya <aditya@portalnesia.com>
  */
 
-package s_config
+package ginit
 
 import (
 	"go.portalnesia.com/portal-cli/internal/config"
@@ -13,7 +13,7 @@ import (
 	"sync"
 )
 
-type Config struct {
+type initType struct {
 	app *config.App
 	cfg *config2.InitConfig
 }
@@ -21,12 +21,12 @@ type Config struct {
 func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, resp chan []config2.Builder) {
 	defer parentWg.Done()
 
-	c := &Config{
+	c := &initType{
 		app: app,
 		cfg: cfg,
 	}
 
-	i := 7
+	i := 29
 	if cfg.Redis {
 		i += 1
 	}
@@ -61,6 +61,55 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 	go c.initConfigLog(wg, respChan)
 	go c.initConfigApp(wg, respChan)
 	go c.initConfigValidator(wg, respChan)
+
+	go c.initServerConfigApp(wg, respChan)
+	go c.initCmdStart(wg, respChan)
+
+	files := []string{
+		"internal/server/config/response",
+		"internal/server/routes/routes",
+		"internal/server/middleware/middleware",
+		"internal/server/decoder",
+		"internal/server/fiber",
+
+		"internal/cerror/exception",
+		"internal/cerror/notfound",
+		"internal/cerror/server",
+		"internal/cerror/parameter",
+		"internal/context/context",
+		"internal/request/request",
+		"pkg/helper/main",
+		"pkg/migration/migration",
+		"cmd/completion",
+		"cmd/app",
+		"main",
+	}
+	for _, f := range files {
+		go c.addStatic(f, wg, respChan)
+	}
+
+	copyFiles := [][]string{
+		{
+			"favicon.ico",
+			"public/favicon.ico",
+		},
+		{
+			"DELETE.txt",
+			"data/DELETE.txt",
+		},
+		{
+			"DELETE.txt",
+			"migrations/DELETE.txt",
+		},
+		{
+			"golang/pkg/migration/README.txt",
+			"pkg/migration/README.md",
+		},
+	}
+
+	for _, f := range copyFiles {
+		go c.copyStatic(app, f[0], f[1], wg, respChan)
+	}
 
 	wg.Wait()
 	close(respChan)

@@ -5,7 +5,7 @@
  * Written by Putu Aditya <aditya@portalnesia.com>
  */
 
-package s_config
+package ginit
 
 import (
 	"github.com/fatih/color"
@@ -16,7 +16,7 @@ import (
 )
 
 // Pertama, buat helper buildLoggerLevelBody
-func (c *Config) buildLoggerLevelBody(level string) *ast.BlockStmt {
+func (c *initType) buildLoggerLevelBody(level string) *ast.BlockStmt {
 	return &ast.BlockStmt{
 		List: []ast.Stmt{
 			// tmp := l.logger.<level>().Str("service", service)
@@ -101,7 +101,7 @@ func (c *Config) buildLoggerLevelBody(level string) *ast.BlockStmt {
 }
 
 // Helper untuk fungsi Error dan Fatal (yang beda)
-func (c *Config) buildLoggerErrorBody(level string) *ast.BlockStmt {
+func (c *initType) buildLoggerErrorBody(level string) *ast.BlockStmt {
 	return &ast.BlockStmt{
 		List: []ast.Stmt{
 			&ast.ReturnStmt{
@@ -139,7 +139,7 @@ func (c *Config) buildLoggerErrorBody(level string) *ast.BlockStmt {
 	}
 }
 
-func (c *Config) initConfigLog(wg *sync.WaitGroup, res chan<- config2.Builder) {
+func (c *initType) initConfigLog(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 	_, _ = color.New(color.FgBlue).Printf("Generating internal/config/log.go\n")
 

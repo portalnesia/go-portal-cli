@@ -5,7 +5,7 @@
  * Written by Putu Aditya <aditya@portalnesia.com>
  */
 
-package s_config
+package ginit
 
 import (
 	"github.com/fatih/color"
@@ -13,7 +13,7 @@ import (
 	"sync"
 )
 
-func (c *Config) initConfigVersionGen(wg *sync.WaitGroup, res chan<- config2.Builder) {
+func (c *initType) initConfigVersionGen(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 	_, _ = color.New(color.FgBlue).Printf("Generating internal/config/version_gen.go\n")
 
@@ -25,7 +25,7 @@ func (c *Config) initConfigVersionGen(wg *sync.WaitGroup, res chan<- config2.Bui
 	}
 }
 
-func (c *Config) initConfigVersion(wg *sync.WaitGroup, res chan<- config2.Builder) {
+func (c *initType) initConfigVersion(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 	_, _ = color.New(color.FgBlue).Printf("Generating internal/config/version.go\n")
 
@@ -37,7 +37,7 @@ func (c *Config) initConfigVersion(wg *sync.WaitGroup, res chan<- config2.Builde
 	}
 }
 
-func (c *Config) initMainVerionGen(wg *sync.WaitGroup, res chan<- config2.Builder) {
+func (c *initType) initMainVerionGen(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 	_, _ = color.New(color.FgBlue).Printf("Generating version_gen.go\n")
 	src, _ := c.app.DataEmbed.ReadFile("data/golang/version_gen.txt")

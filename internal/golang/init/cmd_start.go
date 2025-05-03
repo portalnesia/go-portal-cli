@@ -5,7 +5,7 @@
  * Written by Putu Aditya <aditya@portalnesia.com>
  */
 
-package scmd
+package ginit
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ import (
 	"sync"
 )
 
-func (s *Cmd) initCmdStart(wg *sync.WaitGroup, res chan<- config2.Builder) {
+func (c *initType) initCmdStart(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 	_, _ = color.New(color.FgBlue).Printf("Generating cmd/start.go\n")
 
@@ -27,8 +27,8 @@ func (s *Cmd) initCmdStart(wg *sync.WaitGroup, res chan<- config2.Builder) {
 		`"github.com/spf13/viper"`,
 		`"os"`,
 		`"os/signal"`,
-		fmt.Sprintf(`"%s/internal/config"`, s.cfg.Module),
-		fmt.Sprintf(`"%s/internal/server"`, s.cfg.Module),
+		fmt.Sprintf(`"%s/internal/config"`, c.cfg.Module),
+		fmt.Sprintf(`"%s/internal/server"`, c.cfg.Module),
 		`"syscall"`,
 	}
 	decls := make([]ast.Decl, 0)
@@ -53,7 +53,7 @@ func (s *Cmd) initCmdStart(wg *sync.WaitGroup, res chan<- config2.Builder) {
 		},
 	)
 
-	if s.cfg.Redis {
+	if c.cfg.Redis {
 		runFunc = append(runFunc, &ast.AssignStmt{
 			Lhs: []ast.Expr{
 				&ast.SelectorExpr{
@@ -65,7 +65,7 @@ func (s *Cmd) initCmdStart(wg *sync.WaitGroup, res chan<- config2.Builder) {
 			Rhs: []ast.Expr{ast.NewIdent("true")},
 		})
 	}
-	if s.cfg.Firebase {
+	if c.cfg.Firebase {
 		runFunc = append(runFunc, &ast.AssignStmt{
 			Lhs: []ast.Expr{
 				&ast.SelectorExpr{

@@ -5,7 +5,7 @@
  * Written by Putu Aditya <aditya@portalnesia.com>
  */
 
-package spkg
+package ginit
 
 import (
 	"github.com/fatih/color"
@@ -13,15 +13,14 @@ import (
 	"sync"
 )
 
-func (p *Pkg) initPkgHelper(wg *sync.WaitGroup, res chan<- config2.Builder) {
+func (c *initType) initConfigFirebase(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
+	_, _ = color.New(color.FgBlue).Printf("Generating internal/config/firebase.go\n")
 
-	_, _ = color.New(color.FgBlue).Printf("Generating pkg/helper/main.go\n")
-
-	src, _ := p.app.DataEmbed.ReadFile("data/golang/pkg/helper.txt")
+	src, _ := c.app.DataEmbed.ReadFile("data/golang/internal/config/firebase.txt")
 
 	res <- config2.Builder{
 		Static:   src,
-		Pathname: "pkg/helper/main.go",
+		Pathname: "internal/config/firebase.go",
 	}
 }
