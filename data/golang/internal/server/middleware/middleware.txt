@@ -26,6 +26,7 @@ func Init(app *config.App) func(*fiber.Ctx) error {
 			IP:            ip,
 			Browser:       browser,
 			BrowserString: browserStr,
+			Method:        c.Method(),
 		}
 		c.Locals("ctx", &ctx)
 

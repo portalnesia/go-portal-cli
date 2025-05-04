@@ -8,19 +8,17 @@
 package golang
 
 import (
-	"fmt"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"go.portalnesia.com/portal-cli/cmd/utils"
 	"go.portalnesia.com/portal-cli/internal/config"
+	bgolang "go.portalnesia.com/portal-cli/internal/golang"
 	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
 	"go.portalnesia.com/portal-cli/pkg/helper"
+	"strings"
 )
 
 var (
-	newServiceName    string
-	newServicePath    string
-	newServiceVersion string
 	newServiceUseFlag bool
 	newServiceConfig  config2.NewServiceConfig
 )
@@ -50,6 +48,19 @@ var newServiceCmd = &cobra.Command{
 			_, _ = color.New(color.FgRed).Println("Error:", err)
 			return
 		}
+		cfg.Name = strings.ToLower(cfg.Name)
+
+		if cfg.Path == "" {
+			cfg.Path = cfg.Name
+		}
+		cfg.Path = strings.ToLower(cfg.Path)
+
+		if cfg.Version != "" {
+			cfg.Version = strings.ToLower(cfg.Version)
+			if !strings.HasPrefix(cfg.Version, "v") {
+				cfg.Version = "v" + cfg.Version
+			}
+		}
 
 		appCtx := cmd.Context().Value("app")
 		if appCtx == nil {
@@ -65,11 +76,11 @@ var newServiceCmd = &cobra.Command{
 			_, _ = color.New(color.FgRed).Println("Error:", err)
 			return
 		}
-		if cfg.Path == "" {
-			cfg.Path = cfg.Name
-		}
 
-		fmt.Printf("%+v", cfg)
+		golang := bgolang.New(app)
+		if err := golang.NewService(cfg); err != nil {
+			_, _ = color.New(color.FgRed).Println("Error:", err)
+		}
 	},
 }
 

@@ -43,6 +43,7 @@ func (a *App) NewService(c *fiber.Ctx, handler func(ctx *context.Context, query 
 	if err != nil {
 		return err
 	}
+	ctx.SetContext(c.Context())
 
 	if err = c.QueryParser(&req); err != nil {
 		a.App.Log.Error(err, "server").Msg("Failed to parse query request")

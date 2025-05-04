@@ -49,6 +49,12 @@ func (d *Request) GetPage() int {
 	return d.Page
 }
 
+func (d *Request) GetMethod() string {
+	d.mux.RLock()
+	defer d.mux.RUnlock()
+	return d.ctx.Method
+}
+
 func (d *Request) Init(ctx *context.Context) {
 	d.mux.Lock()
 	defer d.mux.Unlock()

@@ -31,4 +31,5 @@ type Builder struct {
 	File     *ast.File
 	Pathname string
 	Static   []byte
+	Err      error
 }

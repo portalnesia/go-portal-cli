@@ -32,6 +32,10 @@ func New(app *config.App) *Golang {
 
 func (g *Golang) Build(builder []config2.Builder) error {
 	for _, b := range builder {
+		if b.Err != nil {
+			return b.Err
+		}
+
 		pathname := g.app.Dir(b.Pathname)
 
 		var (

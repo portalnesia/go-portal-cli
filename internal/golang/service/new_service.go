@@ -6,3 +6,46 @@
  */
 
 package service
+
+import (
+	"go.portalnesia.com/portal-cli/internal/config"
+	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
+	"sync"
+)
+
+type newService struct {
+	app *config.App
+	cfg config2.NewServiceConfig
+}
+
+func NewService(app *config.App, cfg config2.NewServiceConfig) ([]config2.Builder, error) {
+	c := &newService{
+		app: app,
+		cfg: cfg,
+	}
+
+	i := 4
+	var (
+		allFiles = make([]config2.Builder, 0)
+		respChan = make(chan config2.Builder, i)
+		wg       = &sync.WaitGroup{}
+	)
+	wg.Add(i)
+
+	go c.newServiceUsecase(wg, respChan)
+	go c.newServiceHandler(wg, respChan)
+	go c.newServiceRoutes(wg, respChan)
+	go c.addToRoutes(wg, respChan)
+
+	wg.Wait()
+	close(respChan)
+
+	for res := range respChan {
+		if res.Err != nil {
+			return nil, res.Err
+		}
+		allFiles = append(allFiles, res)
+	}
+
+	return allFiles, nil
+}
