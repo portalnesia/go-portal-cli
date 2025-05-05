@@ -14,12 +14,13 @@ import (
 	"go.portalnesia.com/portal-cli/pkg/helper"
 	"go.portalnesia.com/utils"
 	"go/ast"
+	"go/parser"
 	"go/token"
 	"strings"
 	"sync"
 )
 
-func (s *newService) newServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Builder) {
+func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 
 	serviceName := utils.Ucwords(s.cfg.Name)
@@ -148,7 +149,7 @@ func (s *newService) newServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 						},
 					},
 					{
-						Names: []*ast.Ident{ast.NewIdent("req")},
+						Names: []*ast.Ident{ast.NewIdent("query")},
 						Type: &ast.StarExpr{
 							X: &ast.SelectorExpr{
 								X:   ast.NewIdent("request"),
@@ -230,7 +231,7 @@ func (s *newService) newServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 						},
 					},
 					{
-						Names: []*ast.Ident{ast.NewIdent("req")},
+						Names: []*ast.Ident{ast.NewIdent("query")},
 						Type: &ast.StarExpr{
 							X: &ast.SelectorExpr{
 								X:   ast.NewIdent("request"),
@@ -468,7 +469,7 @@ func (s *newService) newServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 						},
 					},
 					{
-						Names: []*ast.Ident{ast.NewIdent("req")},
+						Names: []*ast.Ident{ast.NewIdent("query")},
 						Type: &ast.StarExpr{
 							X: &ast.SelectorExpr{
 								X:   ast.NewIdent("request"),
@@ -521,5 +522,109 @@ func (s *newService) newServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 	res <- config2.Builder{
 		File:     file,
 		Pathname: fmt.Sprintf("internal/server/usecase/%s.go", s.cfg.Name),
+	}
+}
+
+func (s *addEndpoint) addEndpointUsecase(wg *sync.WaitGroup, res chan<- config2.Builder) {
+	defer wg.Done()
+
+	_, _ = color.New(color.FgBlue).Printf("Generating usecase\n")
+
+	serviceName := utils.Ucwords(s.cfg.ServiceName)
+	ins := strings.ToLower(s.cfg.ServiceName)[0:1]
+
+	// Parse file routes
+	resp := config2.Builder{}
+	defer func() {
+		res <- resp
+	}()
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, s.app.Dir(fmt.Sprintf("internal/server/usecase/%s.go", s.cfg.ServiceName)), nil, parser.AllErrors)
+	if err != nil {
+		resp.Err = err
+		return
+	}
+
+	file.Decls = append(file.Decls, &ast.FuncDecl{
+		Recv: &ast.FieldList{
+			List: []*ast.Field{
+				{
+					Names: []*ast.Ident{ast.NewIdent(ins)},
+					Type:  &ast.StarExpr{X: ast.NewIdent(serviceName)},
+				},
+			},
+		},
+		Doc: &ast.CommentGroup{
+			List: []*ast.Comment{
+				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
+			},
+		},
+		Name: ast.NewIdent(s.cfg.Name),
+		Type: &ast.FuncType{
+			Params: &ast.FieldList{
+				List: []*ast.Field{
+					{
+						Names: []*ast.Ident{ast.NewIdent("ctx")},
+						Type: &ast.StarExpr{
+							X: &ast.SelectorExpr{
+								X:   ast.NewIdent("context2"),
+								Sel: ast.NewIdent("Context"),
+							},
+						},
+					},
+					{
+						Names: []*ast.Ident{ast.NewIdent("trxDb")},
+						Type: &ast.StarExpr{
+							X: &ast.SelectorExpr{
+								X:   ast.NewIdent("gorm"),
+								Sel: ast.NewIdent("DB"),
+							},
+						},
+					},
+					{
+						Names: []*ast.Ident{ast.NewIdent("query")},
+						Type: &ast.StarExpr{
+							X: &ast.SelectorExpr{
+								X:   ast.NewIdent("request"),
+								Sel: ast.NewIdent("Request"),
+							},
+						},
+					},
+				},
+			},
+			Results: &ast.FieldList{
+				List: []*ast.Field{
+					{Type: ast.NewIdent("any")},
+					{Type: ast.NewIdent("error")},
+				},
+			},
+		},
+		Body: &ast.BlockStmt{
+			List: []ast.Stmt{
+				&ast.ReturnStmt{
+					Results: []ast.Expr{
+						ast.NewIdent("nil"),
+						&ast.CallExpr{
+							Fun: &ast.SelectorExpr{
+								X:   ast.NewIdent("errors"),
+								Sel: ast.NewIdent("New"),
+							},
+							Args: []ast.Expr{
+								&ast.BasicLit{
+									Kind:  token.STRING,
+									Value: "\"method not implemented\"",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	resp = config2.Builder{
+		File:     file,
+		Pathname: fmt.Sprintf("internal/server/usecase/%s.go", s.cfg.ServiceName),
 	}
 }

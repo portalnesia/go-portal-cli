@@ -26,6 +26,14 @@ type AddServiceConfig struct {
 	Version string
 }
 
+type AddEndpointConfig struct {
+	Module      string
+	ServiceName string // ex: user
+	Name        string // GetUser
+	Path        string // endpoint path, include version
+	Method      string // GET, POST, PUT, PATCH, DELETE
+}
+
 type Builder struct {
 	Comment  []string
 	File     *ast.File

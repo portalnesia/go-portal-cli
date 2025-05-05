@@ -19,7 +19,7 @@ import (
 	"sync"
 )
 
-func (s *newService) newServiceRoutes(wg *sync.WaitGroup, res chan<- config2.Builder) {
+func (s *addService) addServiceRoutes(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 
 	serviceName := utils.Ucwords(s.cfg.Name)
@@ -224,7 +224,7 @@ func (s *newService) newServiceRoutes(wg *sync.WaitGroup, res chan<- config2.Bui
 	}
 }
 
-func (s *newService) addToRoutes(wg *sync.WaitGroup, res chan<- config2.Builder) {
+func (s *addService) addToRoutes(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 
 	serviceName := utils.Ucwords(s.cfg.Name)
@@ -269,5 +269,78 @@ func (s *newService) addToRoutes(wg *sync.WaitGroup, res chan<- config2.Builder)
 	if !found {
 		resp.Err = fmt.Errorf("routes not found")
 		return
+	}
+}
+
+func (s *addEndpoint) addEndpointRoutes(wg *sync.WaitGroup, res chan<- config2.Builder) {
+	defer wg.Done()
+
+	_, _ = color.New(color.FgBlue).Printf("Generating routes\n")
+
+	serviceName := utils.Ucwords(s.cfg.ServiceName)
+
+	// Parse file routes
+	resp := config2.Builder{}
+	defer func() {
+		res <- resp
+	}()
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, s.app.Dir(fmt.Sprintf("internal/server/routes/%s.go", s.cfg.ServiceName)), nil, parser.AllErrors)
+	if err != nil {
+		resp.Err = err
+		return
+	}
+
+	decls := file.Decls[len(file.Decls)-1]
+	funcDecl, ok := decls.(*ast.FuncDecl)
+	if !ok {
+		resp.Err = fmt.Errorf("invalid routes: function routes%s not found", serviceName)
+		return
+	}
+	funcDecl.Body.List = append(funcDecl.Body.List, &ast.ExprStmt{
+		X: &ast.CallExpr{
+			Fun: &ast.SelectorExpr{
+				X:   ast.NewIdent("route"),
+				Sel: ast.NewIdent(s.cfg.Method),
+			},
+			Args: []ast.Expr{
+				&ast.BasicLit{
+					Kind:  token.STRING,
+					Value: fmt.Sprintf(`"%s"`, s.cfg.Path),
+				},
+				&ast.SelectorExpr{
+					X:   ast.NewIdent("h"),
+					Sel: ast.NewIdent(s.cfg.Name),
+				},
+			},
+		},
+	})
+	if s.cfg.Method == "Put" {
+		funcDecl.Body.List = append(funcDecl.Body.List, &ast.ExprStmt{
+			X: &ast.CallExpr{
+				Fun: &ast.SelectorExpr{
+					X:   ast.NewIdent("route"),
+					Sel: ast.NewIdent("Patch"),
+				},
+				Args: []ast.Expr{
+					&ast.BasicLit{
+						Kind:  token.STRING,
+						Value: fmt.Sprintf(`"%s"`, s.cfg.Path),
+					},
+					&ast.SelectorExpr{
+						X:   ast.NewIdent("h"),
+						Sel: ast.NewIdent(s.cfg.Name),
+					},
+				},
+			},
+		})
+	}
+
+	file.Decls[len(file.Decls)-1] = funcDecl
+
+	resp = config2.Builder{
+		File:     file,
+		Pathname: fmt.Sprintf("internal/server/routes/%s.go", s.cfg.ServiceName),
 	}
 }

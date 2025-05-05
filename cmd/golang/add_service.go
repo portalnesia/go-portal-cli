@@ -19,11 +19,11 @@ import (
 )
 
 var (
-	newServiceUseFlag bool
-	newServiceConfig  config2.AddServiceConfig
+	addServiceUseFlag bool
+	addServiceConfig  config2.AddServiceConfig
 )
 
-var newServiceCmd = &cobra.Command{
+var addServiceCmd = &cobra.Command{
 	Use:   "add-service",
 	Short: "Add new service",
 	Long:  `Add new service and CRUD routes, handler, and usecase`,
@@ -33,18 +33,18 @@ var newServiceCmd = &cobra.Command{
 			err error
 		)
 
-		if newServiceUseFlag {
-			cfg = newServiceConfig
+		if addServiceUseFlag {
+			cfg = addServiceConfig
 		}
-		if err = utils.PromptInitString("Service name", &cfg.Name, !newServiceUseFlag, false); err != nil {
+		if err = utils.PromptInitString("Service name", &cfg.Name, !addServiceUseFlag, false); err != nil {
 			_, _ = color.New(color.FgRed).Println("Error:", err)
 			return
 		}
-		if err = utils.PromptInitString("Endpoint path", &cfg.Path, !newServiceUseFlag, true); err != nil {
+		if err = utils.PromptInitString("Endpoint path", &cfg.Path, !addServiceUseFlag, true); err != nil {
 			_, _ = color.New(color.FgRed).Println("Error:", err)
 			return
 		}
-		if err = utils.PromptInitString("Endpoint version", &cfg.Version, !newServiceUseFlag, true); err != nil {
+		if err = utils.PromptInitString("Endpoint version", &cfg.Version, !addServiceUseFlag, true); err != nil {
 			_, _ = color.New(color.FgRed).Println("Error:", err)
 			return
 		}
@@ -78,17 +78,17 @@ var newServiceCmd = &cobra.Command{
 		}
 
 		golang := bgolang.New(app)
-		if err := golang.NewService(cfg); err != nil {
+		if err := golang.AddService(cfg); err != nil {
 			_, _ = color.New(color.FgRed).Println("Error:", err)
 		}
 	},
 }
 
 func init() {
-	newServiceCmd.Flags().BoolVarP(&newServiceUseFlag, "flag", "f", false, "Use flag instead of prompt")
+	addServiceCmd.Flags().BoolVarP(&addServiceUseFlag, "flag", "f", false, "Use flag instead of prompt")
 
 	// prompt
-	newServiceCmd.Flags().StringVarP(&newServiceConfig.Name, "name", "n", "", "Service name")
-	newServiceCmd.Flags().StringVarP(&newServiceConfig.Path, "path", "p", "", "Endpoint path, example: /users. Default use service name")
-	newServiceCmd.Flags().StringVarP(&newServiceConfig.Version, "version", "v", "", "Endpoint version, example: /v1. Default without version")
+	addServiceCmd.Flags().StringVarP(&addServiceConfig.Name, "name", "n", "", "Service name")
+	addServiceCmd.Flags().StringVarP(&addServiceConfig.Path, "path", "p", "", "Endpoint path, example: /users. Default use service name")
+	addServiceCmd.Flags().StringVarP(&addServiceConfig.Version, "version", "v", "", "Endpoint version, example: /v1. Default without version")
 }

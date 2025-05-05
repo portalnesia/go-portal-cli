@@ -20,6 +20,7 @@ var golangCmd = &cobra.Command{
 
 func Init() *cobra.Command {
 	golangCmd.AddCommand(initCmd)
-	golangCmd.AddCommand(newServiceCmd)
+	golangCmd.AddCommand(addServiceCmd)
+	golangCmd.AddCommand(addEndpointCmd)
 	return golangCmd
 }
