@@ -15,10 +15,10 @@ import (
 
 type newService struct {
 	app *config.App
-	cfg config2.NewServiceConfig
+	cfg config2.AddServiceConfig
 }
 
-func NewService(app *config.App, cfg config2.NewServiceConfig) ([]config2.Builder, error) {
+func AddService(app *config.App, cfg config2.AddServiceConfig) ([]config2.Builder, error) {
 	c := &newService{
 		app: app,
 		cfg: cfg,

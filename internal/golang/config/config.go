@@ -19,7 +19,7 @@ type InitConfig struct {
 	Handlebars bool
 }
 
-type NewServiceConfig struct {
+type AddServiceConfig struct {
 	Module  string
 	Name    string
 	Path    string

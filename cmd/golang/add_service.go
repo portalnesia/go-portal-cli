@@ -20,16 +20,16 @@ import (
 
 var (
 	newServiceUseFlag bool
-	newServiceConfig  config2.NewServiceConfig
+	newServiceConfig  config2.AddServiceConfig
 )
 
 var newServiceCmd = &cobra.Command{
-	Use:   "new-service",
-	Short: "Create new service",
-	Long:  `Create new service and add CRUD routes, handler, and usecase`,
+	Use:   "add-service",
+	Short: "Add new service",
+	Long:  `Add new service and CRUD routes, handler, and usecase`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var (
-			cfg config2.NewServiceConfig
+			cfg config2.AddServiceConfig
 			err error
 		)
 

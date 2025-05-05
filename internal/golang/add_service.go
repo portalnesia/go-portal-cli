@@ -13,10 +13,10 @@ import (
 	"go.portalnesia.com/portal-cli/internal/golang/service"
 )
 
-func (g *Golang) NewService(cfg config2.NewServiceConfig) error {
+func (g *Golang) NewService(cfg config2.AddServiceConfig) error {
 	_, _ = color.New(color.FgBlue).Printf("\nPlease wait...\n")
 
-	builder, err := service.NewService(g.app, cfg)
+	builder, err := service.AddService(g.app, cfg)
 	if err != nil {
 		return err
 	}
