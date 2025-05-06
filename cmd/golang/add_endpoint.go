@@ -14,8 +14,6 @@ import (
 	"go.portalnesia.com/portal-cli/cmd/utils"
 	"go.portalnesia.com/portal-cli/internal/config"
 	bgolang "go.portalnesia.com/portal-cli/internal/golang"
-
-	//bgolang "go.portalnesia.com/portal-cli/internal/golang"
 	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
 	"go.portalnesia.com/portal-cli/pkg/helper"
 	util "go.portalnesia.com/utils"
@@ -71,7 +69,7 @@ var addEndpointCmd = &cobra.Command{
 		if method == "patch" {
 			cfg.Method = "put"
 		}
-		cfg.Method = util.FirstToUpper(cfg.Method)
+		cfg.Method = util.FirstToUpper(strings.ToLower(cfg.Method))
 		cfg.ServiceName = strings.ToLower(cfg.ServiceName)
 		cfg.Name = util.FirstToUpper(cfg.Name)
 		cfg.Path = strings.ToLower(cfg.Path)
@@ -104,6 +102,6 @@ func init() {
 	// prompt
 	addEndpointCmd.Flags().StringVarP(&addEndpointConfig.ServiceName, "service", "s", "", "Service name; example: user")
 	addEndpointCmd.Flags().StringVarP(&addEndpointConfig.Name, "name", "n", "", "Method name; example: FollowUser")
-	addEndpointCmd.Flags().StringVarP(&addEndpointConfig.Path, "path", "p", "", "Endpoint path indlude version, example: /v1/user/:id/follow")
+	addEndpointCmd.Flags().StringVarP(&addEndpointConfig.Path, "path", "p", "", "Endpoint path indlude version, example: /:id/follow")
 	addEndpointCmd.Flags().StringVarP(&addEndpointConfig.Method, "method", "m", "", "HTTP method, example: GET, POST, PUT, PATCH, DELETE")
 }

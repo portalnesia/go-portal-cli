@@ -34,7 +34,7 @@ func (a *App) Close() {
 
 func (a *App) Dir(dir string) string {
 	if a.Production {
-		return fmt.Sprintf("testst/%s", dir)
+		return dir
 	}
 
 	return fmt.Sprintf("tmp/%s", dir)
