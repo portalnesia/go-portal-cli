@@ -20,15 +20,15 @@ portal-cli golang init [flags]
 
 Flags:
 
-| Shorthand | Flag            | Description                |
-|-----------|-----------------|----------------------------|
-| -h        | --help          | help for init              |
-| -a        | --all           | Add all library            |
-| -         | --firebase      | Add firebase               |
-| -f        | --flag          | Use flag instead of prompt |
-| -         | --handlebars    | Add handlebars             |
-| -         | --module string | Module name                |
-| -         | --redis         | Add redis                  |
+| Shorthand | Flag         | Description                |
+|-----------|--------------|----------------------------|
+| -h        | --help       | help for init              |
+| -a        | --all        | Add all library            |
+| -f        | --flag       | Use flag instead of prompt |
+| -o        | --override   | Override existing files    |
+| -         | --firebase   | Add firebase               |
+| -         | --handlebars | Add handlebars             |
+| -         | --redis      | Add redis                  |
 
 
 ## Add Service
@@ -43,13 +43,14 @@ portal-cli golang add-service [flags]
 
 Flags:
 
-| Shorthand | Flag      | Description                                             |
-|-----------|-----------|---------------------------------------------------------|
-| -h        | --help    | help for add-service                                    |
-| -f        | --flag    | Use flag instead of prompt                              |
-| -n        | --name    | Service name                                            |
-| -v        | --version | Endpoint version, example: v1. Default without version  |
-| -p        | --path    | Endpoint path,  example: user. Default use service name |
+| Shorthand | Flag       | Description                                             |
+|-----------|------------|---------------------------------------------------------|
+| -h        | --help     | help for add-service                                    |
+| -f        | --flag     | Use flag instead of prompt                              |
+| -n        | --name     | Service name                                            |
+| -v        | --version  | Endpoint version, example: v1. Default without version  |
+| -p        | --path     | Endpoint path,  example: user. Default use service name |
+| -o        | --override | Override existing files                                 |
 
 
 ## Add Endpoint

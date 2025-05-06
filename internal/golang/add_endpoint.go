@@ -21,7 +21,7 @@ func (g *Golang) AddEndpoint(cfg config2.AddEndpointConfig) error {
 		return err
 	}
 
-	if err = g.Build(builder); err != nil {
+	if err = g.Build(builder, true); err != nil {
 		return err
 	}
 

@@ -17,13 +17,15 @@ type InitConfig struct {
 	Redis      bool
 	Firebase   bool
 	Handlebars bool
+	Override   bool
 }
 
 type AddServiceConfig struct {
-	Module  string
-	Name    string
-	Path    string
-	Version string
+	Module   string
+	Name     string
+	Path     string
+	Version  string
+	Override bool
 }
 
 type AddEndpointConfig struct {

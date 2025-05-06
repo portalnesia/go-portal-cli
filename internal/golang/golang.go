@@ -30,13 +30,19 @@ func New(app *config.App) *Golang {
 	}
 }
 
-func (g *Golang) Build(builder []config2.Builder) error {
+func (g *Golang) Build(builder []config2.Builder, override bool) error {
 	for _, b := range builder {
 		if b.Err != nil {
 			return b.Err
 		}
 
 		pathname := g.app.Dir(b.Pathname)
+
+		if !override {
+			if _, err := os.Stat(pathname); err == nil {
+				return fmt.Errorf("file %s already exists", pathname)
+			}
+		}
 
 		var (
 			src []byte

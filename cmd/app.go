@@ -12,6 +12,7 @@ import (
 	"embed"
 	"go.portalnesia.com/portal-cli/cmd/golang"
 	"go.portalnesia.com/portal-cli/internal/config"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -45,12 +46,10 @@ Designed to be lightweight and modular for future feature expansions.`,
 	defer app.Close()
 
 	ctx := context.WithValue(context.TODO(), "app", app)
-	rootCmd.SetContext(ctx)
-
 	addCommands(rootCmd)
 
-	err := rootCmd.Execute()
+	err := rootCmd.ExecuteContext(ctx)
 	if err != nil {
-		panic(err)
+		os.Exit(1)
 	}
 }

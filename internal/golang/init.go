@@ -45,8 +45,8 @@ func (g *Golang) Init(cfg config2.InitConfig) error {
 	}
 
 	for builder := range resChan {
-		if err := g.Build(builder); err != nil {
-			return errors.Join(fmt.Errorf("failed to build %s", builder[0].Pathname), err)
+		if err := g.Build(builder, cfg.Override); err != nil {
+			return fmt.Errorf("failed to build %s: %s", builder[0].Pathname, err.Error())
 		}
 	}
 

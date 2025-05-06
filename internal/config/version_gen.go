@@ -9,4 +9,4 @@
 
 package config
 
-var tmpVersion = "0.1.0"
+var tmpVersion = "0.1.1"

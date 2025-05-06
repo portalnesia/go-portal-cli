@@ -21,7 +21,7 @@ func (g *Golang) AddService(cfg config2.AddServiceConfig) error {
 		return err
 	}
 
-	if err = g.Build(builder); err != nil {
+	if err = g.Build(builder, cfg.Override); err != nil {
 		return err
 	}
 

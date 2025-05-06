@@ -14,6 +14,7 @@ import (
 	"go.portalnesia.com/portal-cli/internal/config"
 	bgolang "go.portalnesia.com/portal-cli/internal/golang"
 	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
+	"go.portalnesia.com/portal-cli/pkg/helper"
 )
 
 var (
@@ -27,12 +28,27 @@ var initCmd = &cobra.Command{
 	Short: "Init structure directory",
 	Long:  `Golang helper for init structure directory`,
 	Run: func(cmd *cobra.Command, args []string) {
-		var cfg config2.InitConfig
+		var (
+			cfg config2.InitConfig
+			err error
+		)
 
-		if err := utils.PromptInitString("Module name", &initConfig.Module, true); err != nil {
+		appCtx := cmd.Context().Value("app")
+		if appCtx == nil {
+			panic("app is nil")
+		}
+		app, ok := appCtx.(*config.App)
+		if !ok {
+			panic("invalid app")
+		}
+
+		addServiceConfig.Module, err = helper.GetModuleName(app.Dir("go.mod"))
+		if err != nil {
 			_, _ = color.New(color.FgRed).Println("Error:", err)
 			return
 		}
+		cfg.Module = addServiceConfig.Module
+
 		if initUseFlag || initWithAll {
 			cfg = initConfig
 			if initWithAll {
@@ -53,15 +69,10 @@ var initCmd = &cobra.Command{
 				_, _ = color.New(color.FgRed).Println("Error:", err)
 				return
 			}
-		}
-
-		appCtx := cmd.Context().Value("app")
-		if appCtx == nil {
-			panic("app is nil")
-		}
-		app, ok := appCtx.(*config.App)
-		if !ok {
-			panic("invalid app")
+			if err := utils.PromptInitBool("Override existing files", &cfg.Override); err != nil {
+				_, _ = color.New(color.FgRed).Println("Error:", err)
+				return
+			}
 		}
 
 		golang := bgolang.New(app)
@@ -80,4 +91,5 @@ func init() {
 	initCmd.Flags().BoolVar(&initConfig.Redis, "redis", false, "Add redis")
 	initCmd.Flags().BoolVar(&initConfig.Firebase, "firebase", false, "Add firebase")
 	initCmd.Flags().BoolVar(&initConfig.Handlebars, "handlebars", false, "Add handlebars")
+	initCmd.Flags().BoolVarP(&initConfig.Override, "override", "o", false, "Force override existing files")
 }

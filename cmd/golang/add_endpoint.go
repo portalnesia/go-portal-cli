@@ -35,22 +35,38 @@ var addEndpointCmd = &cobra.Command{
 			err error
 		)
 
+		appCtx := cmd.Context().Value("app")
+		if appCtx == nil {
+			panic("app is nil")
+		}
+		app, ok := appCtx.(*config.App)
+		if !ok {
+			panic("invalid app")
+		}
+
+		addServiceConfig.Module, err = helper.GetModuleName(app.Dir("go.mod"))
+		if err != nil {
+			_, _ = color.New(color.FgRed).Println("Error:", err)
+			return
+		}
+		cfg.Module = addServiceConfig.Module
+
 		if addEndpointUseFlag {
 			cfg = addEndpointConfig
 		}
-		if err = utils.PromptInitString("Service name", &cfg.ServiceName, !addEndpointUseFlag, false); err != nil {
+		if err = utils.PromptInitString("Service name", &cfg.ServiceName, true, false); err != nil {
 			_, _ = color.New(color.FgRed).Println("Error:", err)
 			return
 		}
-		if err = utils.PromptInitString("Method name", &cfg.Name, !addEndpointUseFlag, false); err != nil {
+		if err = utils.PromptInitString("Method name", &cfg.Name, true, false); err != nil {
 			_, _ = color.New(color.FgRed).Println("Error:", err)
 			return
 		}
-		if err = utils.PromptInitString("Endpoint path", &cfg.Path, !addEndpointUseFlag, false); err != nil {
+		if err = utils.PromptInitString("Endpoint path", &cfg.Path, true, false); err != nil {
 			_, _ = color.New(color.FgRed).Println("Error:", err)
 			return
 		}
-		if err = utils.PromptInitString("HTTP method", &cfg.Method, !addEndpointUseFlag, false); err != nil {
+		if err = utils.PromptInitString("HTTP method", &cfg.Method, true, false); err != nil {
 			_, _ = color.New(color.FgRed).Println("Error:", err)
 			return
 		}
@@ -71,23 +87,13 @@ var addEndpointCmd = &cobra.Command{
 		}
 		cfg.Method = util.FirstToUpper(strings.ToLower(cfg.Method))
 		cfg.ServiceName = strings.ToLower(cfg.ServiceName)
-		cfg.Name = util.FirstToUpper(cfg.Name)
+		cfg.Name = strings.Join(
+			lo.Map[string, string](strings.Split(cfg.Name, " "), func(item string, index int) string {
+				return util.FirstToUpper(item)
+			}),
+			"",
+		)
 		cfg.Path = strings.ToLower(cfg.Path)
-
-		appCtx := cmd.Context().Value("app")
-		if appCtx == nil {
-			panic("app is nil")
-		}
-		app, ok := appCtx.(*config.App)
-		if !ok {
-			panic("invalid app")
-		}
-
-		cfg.Module, err = helper.GetModuleName(app.Dir("go.mod"))
-		if err != nil {
-			_, _ = color.New(color.FgRed).Println("Error:", err)
-			return
-		}
 
 		golang := bgolang.New(app)
 		if err := golang.AddEndpoint(cfg); err != nil {

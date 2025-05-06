@@ -33,10 +33,26 @@ var addServiceCmd = &cobra.Command{
 			err error
 		)
 
+		appCtx := cmd.Context().Value("app")
+		if appCtx == nil {
+			panic("app is nil")
+		}
+		app, ok := appCtx.(*config.App)
+		if !ok {
+			panic("invalid app")
+		}
+
+		addServiceConfig.Module, err = helper.GetModuleName(app.Dir("go.mod"))
+		if err != nil {
+			_, _ = color.New(color.FgRed).Println("Error:", err)
+			return
+		}
+		cfg.Module = addServiceConfig.Module
+
 		if addServiceUseFlag {
 			cfg = addServiceConfig
 		}
-		if err = utils.PromptInitString("Service name", &cfg.Name, !addServiceUseFlag, false); err != nil {
+		if err = utils.PromptInitString("Service name", &cfg.Name, true, false); err != nil {
 			_, _ = color.New(color.FgRed).Println("Error:", err)
 			return
 		}
@@ -47,6 +63,12 @@ var addServiceCmd = &cobra.Command{
 		if err = utils.PromptInitString("Endpoint version", &cfg.Version, !addServiceUseFlag, true); err != nil {
 			_, _ = color.New(color.FgRed).Println("Error:", err)
 			return
+		}
+		if !addServiceUseFlag {
+			if err := utils.PromptInitBool("Override existing files", &cfg.Override); err != nil {
+				_, _ = color.New(color.FgRed).Println("Error:", err)
+				return
+			}
 		}
 		cfg.Name = strings.ToLower(cfg.Name)
 
@@ -60,21 +82,6 @@ var addServiceCmd = &cobra.Command{
 			if !strings.HasPrefix(cfg.Version, "v") {
 				cfg.Version = "v" + cfg.Version
 			}
-		}
-
-		appCtx := cmd.Context().Value("app")
-		if appCtx == nil {
-			panic("app is nil")
-		}
-		app, ok := appCtx.(*config.App)
-		if !ok {
-			panic("invalid app")
-		}
-
-		cfg.Module, err = helper.GetModuleName(app.Dir("go.mod"))
-		if err != nil {
-			_, _ = color.New(color.FgRed).Println("Error:", err)
-			return
 		}
 
 		golang := bgolang.New(app)
@@ -91,4 +98,5 @@ func init() {
 	addServiceCmd.Flags().StringVarP(&addServiceConfig.Name, "name", "n", "", "Service name")
 	addServiceCmd.Flags().StringVarP(&addServiceConfig.Path, "path", "p", "", "Endpoint path, example: /users. Default use service name")
 	addServiceCmd.Flags().StringVarP(&addServiceConfig.Version, "version", "v", "", "Endpoint version, example: /v1. Default without version")
+	addServiceCmd.Flags().BoolVarP(&initConfig.Override, "override", "o", false, "Force override existing files")
 }
