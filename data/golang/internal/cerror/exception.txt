@@ -45,7 +45,7 @@ func (e Error) Error() string {
 	return msg
 }
 
-func newError(status int, code int, message string, description string, reason ...error) *Error {
+func NewError(status int, code int, message string, description string, reason ...error) *Error {
 	stack := make([]uintptr, 3)
 	length := runtime.Callers(2, stack[:])
 
@@ -67,19 +67,8 @@ func newError(status int, code int, message string, description string, reason .
 }
 
 func newOauthError(status int, code int, message string, description string, reason ...error) *Error {
-	err := newError(status, code, message, description, reason...)
+	err := NewError(status, code, message, description, reason...)
 	return err
-}
-
-type Exception struct {
-}
-
-func New() *Exception {
-	return &Exception{}
-}
-
-func (e *Exception) Custom(status int, code int, message string, description string, err ...error) *Error {
-	return newError(status, code, message, description, err...)
 }
 
 // A StackFrame contains all necessary information about to generate a line
@@ -97,8 +86,8 @@ type StackFrame struct {
 	ProgramCounter uintptr
 }
 
-// NewStackFrame popoulates a stack frame object from the program counter.
-func NewStackFrame(pc uintptr) (frame StackFrame) {
+// newStackFrame popoulates a stack frame object from the program counter.
+func newStackFrame(pc uintptr) (frame StackFrame) {
 
 	frame = StackFrame{ProgramCounter: pc}
 	if frame.Func() == nil {
@@ -138,7 +127,7 @@ func (frame *StackFrame) String() string {
 func (frame *StackFrame) SourceLine() (string, error) {
 	source, err := frame.sourceLine()
 	if err != nil {
-		return source, newError(503, ErrorServer, "Something went wrong", err.Error(), err)
+		return source, NewError(503, ErrorServer, "Something went wrong", err.Error(), err)
 	}
 	return source, err
 }
@@ -194,12 +183,12 @@ func packageAndName(fn *runtime.Func) (string, string) {
 	return pkg, name
 }
 
-// Stack returns the callstack formatted the same way that go does
+// getStack returns the callstack formatted the same way that go does
 // in runtime/debug.Stack()
-func (e Error) Stack() []byte {
+func (e Error) getStack() []byte {
 	buf := bytes.Buffer{}
 
-	for _, frame := range e.StackFrames() {
+	for _, frame := range e.stackFrames() {
 		buf.WriteString(frame.String())
 	}
 
@@ -215,17 +204,17 @@ func (e Error) Callers() []uintptr {
 // ErrorStack returns a string that contains both the
 // error message and the callstack.
 func (e Error) ErrorStack() string {
-	return e.Error() + "\n" + string(e.Stack())
+	return e.Error() + "\n" + string(e.getStack())
 }
 
-// StackFrames returns an array of frames containing information about the
+// stackFrames returns an array of frames containing information about the
 // stack.
-func (e Error) StackFrames() []StackFrame {
+func (e Error) stackFrames() []StackFrame {
 	if e.frames == nil {
 		e.frames = make([]StackFrame, len(e.stack))
 
 		for i, pc := range e.stack {
-			e.frames[i] = NewStackFrame(pc)
+			e.frames[i] = newStackFrame(pc)
 		}
 	}
 
@@ -303,10 +292,10 @@ func TestSameError(t *testing.T, expectedErr error, actualErr error) bool {
 	return true
 }
 
-func (e *Exception) HelperNotFound(err error, tipe string, id interface{}, idNameArg ...string) *Error {
+func HelperNotFound(err error, tipe string, id interface{}, idNameArg ...string) *Error {
 	if IsNotFound(err) {
-		return e.NotFound(tipe, id, idNameArg...)
+		return NotFound(tipe, id, idNameArg...)
 	} else {
-		return e.Server(err)
+		return Server(err)
 	}
 }

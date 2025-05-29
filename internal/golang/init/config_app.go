@@ -23,15 +23,15 @@ func (c *initType) initConfigApp(wg *sync.WaitGroup, res chan<- config2.Builder)
 	_, _ = color.New(color.FgBlue).Printf("Generating internal/config/app.go\n")
 	pkgImport := []string{
 		`"embed"`,
+		`"github.com/gofiber/fiber/v2"`,
+		`"github.com/rs/zerolog"`,
+		`"github.com/spf13/viper"`,
+		`"github.com/subosito/gotenv"`,
+		`pncrypto "go.portalnesia.com/crypto"`,
+		`"gorm.io/gorm"`,
 		`"os"`,
 		`"strings"`,
 		`"time"`,
-		`"github.com/subosito/gotenv"`,
-		`pncrypto "go.portalnesia.com/crypto"`,
-		`"github.com/spf13/viper"`,
-		`"github.com/rs/zerolog"`,
-		`"gorm.io/gorm"`,
-		`"github.com/go-playground/validator/v10"`,
 	}
 	decls := make([]ast.Decl, 0)
 
@@ -49,11 +49,6 @@ func (c *initType) initConfigApp(wg *sync.WaitGroup, res chan<- config2.Builder)
 			`fiberredis "github.com/gofiber/storage/redis/v3"`,
 			`"github.com/gofiber/fiber/v2/middleware/session"`,
 			`"github.com/redis/go-redis/v9"`,
-		)
-	}
-	if c.cfg.Firebase {
-		pkgImport = append(pkgImport,
-			`firebase "firebase.google.com/go/v4"`,
 		)
 	}
 
@@ -126,27 +121,6 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 				},
 			},
 		)
-	}
-	if c.cfg.Firebase {
-		specs = append(specs, &ast.ValueSpec{
-			Names: []*ast.Ident{ast.NewIdent("chGoogleFirebase")},
-			Values: []ast.Expr{
-				&ast.CallExpr{
-					Fun: ast.NewIdent("make"),
-					Args: []ast.Expr{
-						&ast.ChanType{
-							Dir: ast.SEND | ast.RECV,
-							Value: &ast.StarExpr{
-								X: &ast.SelectorExpr{
-									X:   ast.NewIdent("firebase"),
-									Sel: ast.NewIdent("App"),
-								},
-							},
-						},
-					},
-				},
-			},
-		})
 	}
 
 	body := &ast.BlockStmt{
@@ -634,58 +608,6 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 		helper.BodyListNewLines(),
 	)
 
-	// FIREBASE
-	if c.cfg.Firebase {
-		body.List = append(body.List, &ast.ExprStmt{
-			X: &ast.BasicLit{
-				Kind:  token.STRING,
-				Value: `// Init firebase`,
-			}, // dummy expression, tidak valid
-		}, &ast.IfStmt{
-			Cond: &ast.SelectorExpr{
-				X:   ast.NewIdent("config"),
-				Sel: ast.NewIdent("Firebase"),
-			},
-			Body: &ast.BlockStmt{
-				List: []ast.Stmt{
-					// log.Info("system").Msg("Initializing firebase...")
-					&ast.ExprStmt{
-						X: &ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X: &ast.CallExpr{
-									Fun: &ast.SelectorExpr{
-										X:   ast.NewIdent("log"),
-										Sel: ast.NewIdent("Info"),
-									},
-									Args: []ast.Expr{
-										&ast.BasicLit{
-											Kind:  token.STRING,
-											Value: `"system"`,
-										},
-									},
-								},
-								Sel: ast.NewIdent("Msg"),
-							},
-							Args: []ast.Expr{
-								&ast.BasicLit{
-									Kind:  token.STRING,
-									Value: `"Initializing firebase..."`,
-								},
-							},
-						},
-					},
-					// go newFirebase(chGoogleFirebase)
-					&ast.GoStmt{
-						Call: &ast.CallExpr{
-							Fun:  ast.NewIdent("newFirebase"),
-							Args: []ast.Expr{ast.NewIdent("chGoogleFirebase")},
-						},
-					},
-				},
-			},
-		}, helper.BodyListNewLines())
-	}
-
 	if c.cfg.Redis {
 		body.List = append(body.List,
 			&ast.ExprStmt{
@@ -824,21 +746,21 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 	appBodyList := &ast.AssignStmt{
 		Lhs: []ast.Expr{
 			&ast.Ident{
-				Name: "app",
+				Name: "apps",
 			},
 		},
-		Tok: token.ASSIGN,
+		Tok: token.DEFINE,
 		Rhs: []ast.Expr{
 			&ast.UnaryExpr{
 				Op: token.AND,
 				X: &ast.CompositeLit{
 					Type: &ast.Ident{
-						Name: "App",
+						Name: "app",
 					},
 					Elts: []ast.Expr{
 						&ast.KeyValueExpr{
 							Key: &ast.Ident{
-								Name: "Config",
+								Name: "config",
 							},
 							Value: &ast.Ident{
 								Name: "config",
@@ -846,7 +768,7 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 						},
 						&ast.KeyValueExpr{
 							Key: &ast.Ident{
-								Name: "Embed",
+								Name: "embed",
 							},
 							Value: &ast.SelectorExpr{
 								X: &ast.Ident{
@@ -859,7 +781,7 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 						},
 						&ast.KeyValueExpr{
 							Key: &ast.Ident{
-								Name: "Crypto",
+								Name: "crypto",
 							},
 							Value: &ast.Ident{
 								Name: "crypto",
@@ -867,7 +789,7 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 						},
 						&ast.KeyValueExpr{
 							Key: &ast.Ident{
-								Name: "Log",
+								Name: "log",
 							},
 							Value: &ast.UnaryExpr{
 								Op: token.AND,
@@ -878,21 +800,10 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 						},
 						&ast.KeyValueExpr{
 							Key: &ast.Ident{
-								Name: "IsProduction",
+								Name: "isProduction",
 							},
 							Value: &ast.Ident{
 								Name: "isProduction",
-							},
-						},
-						&ast.KeyValueExpr{
-							Key: &ast.Ident{
-								Name: "Validator",
-							},
-							Value: &ast.CallExpr{
-								Fun: &ast.Ident{
-									Name: "initValidator",
-								},
-								Args: []ast.Expr{},
 							},
 						},
 					},
@@ -903,21 +814,21 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 	if c.cfg.Redis {
 		appBodyList.Rhs[0].(*ast.UnaryExpr).X.(*ast.CompositeLit).Elts = append(appBodyList.Rhs[0].(*ast.UnaryExpr).X.(*ast.CompositeLit).Elts, &ast.KeyValueExpr{
 			Key: &ast.Ident{
-				Name: "Redis",
+				Name: "redis",
 			},
 			Value: &ast.Ident{
 				Name: "redisClient",
 			},
 		}, &ast.KeyValueExpr{
 			Key: &ast.Ident{
-				Name: "FiberStorage",
+				Name: "fiberStorage",
 			},
 			Value: &ast.Ident{
 				Name: "storage",
 			},
 		}, &ast.KeyValueExpr{
 			Key: &ast.Ident{
-				Name: "SessionStore",
+				Name: "sessionStore",
 			},
 			Value: &ast.Ident{
 				Name: "sessionStore",
@@ -936,8 +847,8 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 				&ast.AssignStmt{
 					Lhs: []ast.Expr{
 						&ast.SelectorExpr{
-							X:   ast.NewIdent("app"),
-							Sel: ast.NewIdent("DB"),
+							X:   ast.NewIdent("apps"),
+							Sel: ast.NewIdent("dB"),
 						},
 					},
 					Tok: token.ASSIGN,
@@ -952,35 +863,13 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 		},
 	}, helper.BodyListNewLines())
 
-	if c.cfg.Firebase {
-		body.List = append(body.List, &ast.IfStmt{
-			Cond: &ast.SelectorExpr{
-				X:   ast.NewIdent("config"),
-				Sel: ast.NewIdent("Firebase"),
+	body.List = append(body.List, &ast.ReturnStmt{
+		Results: []ast.Expr{
+			&ast.Ident{
+				Name: "apps",
 			},
-			Body: &ast.BlockStmt{
-				List: []ast.Stmt{
-					&ast.AssignStmt{
-						Lhs: []ast.Expr{
-							&ast.SelectorExpr{
-								X:   ast.NewIdent("app"),
-								Sel: ast.NewIdent("firebase"),
-							},
-						},
-						Tok: token.ASSIGN,
-						Rhs: []ast.Expr{
-							&ast.UnaryExpr{
-								Op: token.ARROW,
-								X:  ast.NewIdent("chGoogleFirebase"),
-							},
-						},
-					},
-				},
-			},
-		}, helper.BodyListNewLines())
-	}
-
-	body.List = append(body.List, &ast.ReturnStmt{})
+		},
+	})
 
 	decls = append(decls, &ast.FuncDecl{
 		Name: ast.NewIdent("New"),
@@ -1001,8 +890,7 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 			Results: &ast.FieldList{
 				List: []*ast.Field{
 					{
-						Names: []*ast.Ident{ast.NewIdent("app")},
-						Type:  &ast.StarExpr{X: ast.NewIdent("App")},
+						Type: ast.NewIdent("App"),
 					},
 				},
 			},
@@ -1024,7 +912,7 @@ func (c *initType) appInitClose(decls []ast.Decl) []ast.Decl {
 							Fun: &ast.SelectorExpr{
 								X: &ast.SelectorExpr{
 									X:   ast.NewIdent("a"),
-									Sel: ast.NewIdent("Log"),
+									Sel: ast.NewIdent("log"),
 								},
 								Sel: ast.NewIdent("Info"),
 							},
@@ -1069,7 +957,7 @@ func (c *initType) appInitClose(decls []ast.Decl) []ast.Decl {
 			Cond: &ast.BinaryExpr{
 				X: &ast.SelectorExpr{
 					X:   ast.NewIdent("a"),
-					Sel: ast.NewIdent("FiberStorage"),
+					Sel: ast.NewIdent("fiberStorage"),
 				},
 				Op: token.NEQ,
 				Y:  ast.NewIdent("nil"),
@@ -1084,7 +972,7 @@ func (c *initType) appInitClose(decls []ast.Decl) []ast.Decl {
 									Fun: &ast.SelectorExpr{
 										X: &ast.SelectorExpr{
 											X:   ast.NewIdent("a"),
-											Sel: ast.NewIdent("Log"),
+											Sel: ast.NewIdent("log"),
 										},
 										Sel: ast.NewIdent("Info"),
 									},
@@ -1115,7 +1003,7 @@ func (c *initType) appInitClose(decls []ast.Decl) []ast.Decl {
 									Fun: &ast.SelectorExpr{
 										X: &ast.SelectorExpr{
 											X:   ast.NewIdent("a"),
-											Sel: ast.NewIdent("FiberStorage"),
+											Sel: ast.NewIdent("fiberStorage"),
 										},
 										Sel: ast.NewIdent("Close"),
 									},
@@ -1137,7 +1025,7 @@ func (c *initType) appInitClose(decls []ast.Decl) []ast.Decl {
 												Fun: &ast.SelectorExpr{
 													X: &ast.SelectorExpr{
 														X:   ast.NewIdent("a"),
-														Sel: ast.NewIdent("Log"),
+														Sel: ast.NewIdent("log"),
 													},
 													Sel: ast.NewIdent("Error"),
 												},
@@ -1172,7 +1060,7 @@ func (c *initType) appInitClose(decls []ast.Decl) []ast.Decl {
 		Cond: &ast.BinaryExpr{
 			X: &ast.SelectorExpr{
 				X:   ast.NewIdent("a"),
-				Sel: ast.NewIdent("DB"),
+				Sel: ast.NewIdent("dB"),
 			},
 			Op: token.NEQ,
 			Y:  ast.NewIdent("nil"),
@@ -1187,7 +1075,7 @@ func (c *initType) appInitClose(decls []ast.Decl) []ast.Decl {
 								Fun: &ast.SelectorExpr{
 									X: &ast.SelectorExpr{
 										X:   ast.NewIdent("a"),
-										Sel: ast.NewIdent("Log"),
+										Sel: ast.NewIdent("log"),
 									},
 									Sel: ast.NewIdent("Info"),
 								},
@@ -1221,7 +1109,7 @@ func (c *initType) appInitClose(decls []ast.Decl) []ast.Decl {
 								Fun: &ast.SelectorExpr{
 									X: &ast.SelectorExpr{
 										X:   ast.NewIdent("a"),
-										Sel: ast.NewIdent("DB"),
+										Sel: ast.NewIdent("dB"),
 									},
 									Sel: ast.NewIdent("DB"),
 								},
@@ -1264,7 +1152,7 @@ func (c *initType) appInitClose(decls []ast.Decl) []ast.Decl {
 														Fun: &ast.SelectorExpr{
 															X: &ast.SelectorExpr{
 																X:   ast.NewIdent("a"),
-																Sel: ast.NewIdent("Log"),
+																Sel: ast.NewIdent("log"),
 															},
 															Sel: ast.NewIdent("Error"),
 														},
@@ -1312,7 +1200,7 @@ func (c *initType) appInitClose(decls []ast.Decl) []ast.Decl {
 						{Name: "a"},
 					},
 					Type: &ast.StarExpr{
-						X: &ast.Ident{Name: "App"},
+						X: &ast.Ident{Name: "app"},
 					},
 				},
 			},
@@ -1416,12 +1304,6 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 			Type:  ast.NewIdent("bool"),
 		})
 	}
-	if c.cfg.Firebase {
-		typeConfigListField = append(typeConfigListField, &ast.Field{
-			Names: []*ast.Ident{ast.NewIdent("Firebase")},
-			Type:  ast.NewIdent("bool"),
-		})
-	}
 	decls = append(decls, &ast.GenDecl{
 		Tok: token.TYPE,
 		Doc: &ast.CommentGroup{
@@ -1441,33 +1323,180 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 		},
 	})
 
+	//interface App
+	decls = append(decls, &ast.GenDecl{
+		Tok: token.TYPE,
+		Specs: []ast.Spec{
+			&ast.TypeSpec{
+				Name: ast.NewIdent("App"),
+				Type: &ast.InterfaceType{
+					Methods: &ast.FieldList{
+						List: []*ast.Field{
+							{
+								Names: []*ast.Ident{ast.NewIdent("IsProduction")},
+								Type: &ast.FuncType{
+									Params:  &ast.FieldList{},
+									Results: &ast.FieldList{List: []*ast.Field{{Type: ast.NewIdent("bool")}}},
+								},
+							},
+							{
+								Names: []*ast.Ident{ast.NewIdent("Embed")},
+								Type: &ast.FuncType{
+									Params:  &ast.FieldList{},
+									Results: &ast.FieldList{List: []*ast.Field{{Type: ast.NewIdent("Embed")}}},
+								},
+							},
+							{
+								Names: []*ast.Ident{ast.NewIdent("Crypto")},
+								Type: &ast.FuncType{
+									Params: &ast.FieldList{},
+									Results: &ast.FieldList{
+										List: []*ast.Field{
+											{
+												Type: &ast.SelectorExpr{
+													X: ast.NewIdent("pncrypto"), Sel: ast.NewIdent("Crypto"),
+												},
+											},
+										},
+									},
+								},
+							},
+							{
+								Names: []*ast.Ident{ast.NewIdent("Log")},
+								Type: &ast.FuncType{
+									Params: &ast.FieldList{},
+									Results: &ast.FieldList{
+										List: []*ast.Field{{Type: &ast.StarExpr{X: ast.NewIdent("Logger")}}},
+									},
+								},
+							},
+							{
+								Names: []*ast.Ident{ast.NewIdent("DB")},
+								Type: &ast.FuncType{
+									Params: &ast.FieldList{},
+									Results: &ast.FieldList{
+										List: []*ast.Field{
+											{
+												Type: &ast.StarExpr{
+													X: &ast.SelectorExpr{
+														X: ast.NewIdent("gorm"), Sel: ast.NewIdent("DB"),
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							{
+								Names: []*ast.Ident{ast.NewIdent("Redis")},
+								Type: &ast.FuncType{
+									Params: &ast.FieldList{},
+									Results: &ast.FieldList{
+										List: []*ast.Field{
+											{
+												Type: &ast.SelectorExpr{
+													X: ast.NewIdent("redis"), Sel: ast.NewIdent("UniversalClient"),
+												},
+											},
+										},
+									},
+								},
+							},
+							{
+								Names: []*ast.Ident{ast.NewIdent("FiberStorage")},
+								Type: &ast.FuncType{
+									Params: &ast.FieldList{},
+									Results: &ast.FieldList{
+										List: []*ast.Field{
+											{
+												Type: &ast.SelectorExpr{
+													X: ast.NewIdent("fiber"), Sel: ast.NewIdent("Storage"),
+												},
+											},
+										},
+									},
+								},
+							},
+							{
+								Names: []*ast.Ident{ast.NewIdent("SessionStore")},
+								Type: &ast.FuncType{
+									Params: &ast.FieldList{},
+									Results: &ast.FieldList{
+										List: []*ast.Field{
+											{
+												Type: &ast.StarExpr{
+													X: &ast.SelectorExpr{
+														X: ast.NewIdent("session"), Sel: ast.NewIdent("Store"),
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							{
+								Names: []*ast.Ident{ast.NewIdent("GetRedisKeyf")},
+								Type: &ast.FuncType{
+									Params: &ast.FieldList{
+										List: []*ast.Field{
+											{
+												Names: []*ast.Ident{ast.NewIdent("key")},
+												Type:  ast.NewIdent("string"),
+											},
+											{
+												Names: []*ast.Ident{ast.NewIdent("format")},
+												Type: &ast.Ellipsis{
+													Elt: ast.NewIdent("any"),
+												},
+											},
+										},
+									},
+									Results: &ast.FieldList{
+										List: []*ast.Field{{Type: ast.NewIdent("string")}},
+									},
+								},
+							},
+							{
+								Names: []*ast.Ident{ast.NewIdent("Close")},
+								Type: &ast.FuncType{
+									Params:  &ast.FieldList{},
+									Results: nil,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
 	// type app
 	typeAppListField := []*ast.Field{
 		{
-			Names: []*ast.Ident{ast.NewIdent("Config")},
+			Names: []*ast.Ident{ast.NewIdent("config")},
 			Type:  ast.NewIdent("Config"),
 		},
 		{
-			Names: []*ast.Ident{ast.NewIdent("Embed")},
+			Names: []*ast.Ident{ast.NewIdent("embed")},
 			Type:  ast.NewIdent("Embed"),
 		},
 		{
-			Names: []*ast.Ident{ast.NewIdent("IsProduction")},
+			Names: []*ast.Ident{ast.NewIdent("isProduction")},
 			Type:  ast.NewIdent("bool"),
 		},
 		{
-			Names: []*ast.Ident{ast.NewIdent("Crypto")},
+			Names: []*ast.Ident{ast.NewIdent("crypto")},
 			Type: &ast.SelectorExpr{
 				X:   ast.NewIdent("pncrypto"),
 				Sel: ast.NewIdent("Crypto"),
 			},
 		},
 		{
-			Names: []*ast.Ident{ast.NewIdent("Log")},
+			Names: []*ast.Ident{ast.NewIdent("log")},
 			Type:  &ast.StarExpr{X: ast.NewIdent("Logger")},
 		},
 		{
-			Names: []*ast.Ident{ast.NewIdent("DB")},
+			Names: []*ast.Ident{ast.NewIdent("dB")},
 			Type: &ast.StarExpr{
 				X: &ast.SelectorExpr{
 					X:   ast.NewIdent("gorm"),
@@ -1475,27 +1504,18 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 				},
 			},
 		},
-		{
-			Names: []*ast.Ident{ast.NewIdent("Validator")},
-			Type: &ast.StarExpr{
-				X: &ast.SelectorExpr{
-					X:   ast.NewIdent("validator"),
-					Sel: ast.NewIdent("Validate"),
-				},
-			},
-		},
 	}
 	if c.cfg.Redis {
 		typeAppListField = append(typeAppListField,
 			&ast.Field{
-				Names: []*ast.Ident{ast.NewIdent("Redis")},
+				Names: []*ast.Ident{ast.NewIdent("redis")},
 				Type: &ast.SelectorExpr{
 					X:   ast.NewIdent("redis"),
 					Sel: ast.NewIdent("UniversalClient"),
 				},
 			},
 			&ast.Field{
-				Names: []*ast.Ident{ast.NewIdent("SessionStore")},
+				Names: []*ast.Ident{ast.NewIdent("sessionStore")},
 				Type: &ast.StarExpr{
 					X: &ast.SelectorExpr{
 						X:   ast.NewIdent("session"),
@@ -1504,7 +1524,7 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 				},
 			},
 			&ast.Field{
-				Names: []*ast.Ident{ast.NewIdent("FiberStorage")},
+				Names: []*ast.Ident{ast.NewIdent("fiberStorage")},
 				Type: &ast.StarExpr{
 					X: &ast.SelectorExpr{
 						X:   ast.NewIdent("fiberredis"),
@@ -1513,17 +1533,6 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 				},
 			},
 		)
-	}
-	if c.cfg.Firebase {
-		typeAppListField = append(typeAppListField, &ast.Field{
-			Names: []*ast.Ident{ast.NewIdent("firebase")},
-			Type: &ast.StarExpr{
-				X: &ast.SelectorExpr{
-					X:   ast.NewIdent("firebase"),
-					Sel: ast.NewIdent("App"),
-				},
-			},
-		})
 	}
 	decls = append(decls, &ast.GenDecl{
 		Tok: token.TYPE,
@@ -1534,7 +1543,7 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 		},
 		Specs: []ast.Spec{
 			&ast.TypeSpec{
-				Name: ast.NewIdent("App"),
+				Name: ast.NewIdent("app"),
 				Type: &ast.StructType{
 					Fields: &ast.FieldList{
 						List: typeAppListField,

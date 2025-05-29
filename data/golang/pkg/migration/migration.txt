@@ -18,25 +18,25 @@ import (
 type Goose struct {
 	db  *sql.DB
 	dir string
-	app *config.App
+	app config.App
 }
 
-func New(app *config.App) *Goose {
-	goose.SetBaseFS(app.Embed.Migration)
+func New(app config.App) *Goose {
+	goose.SetBaseFS(app.Embed().Migration)
 	goose.SetTableName("db_version")
 	if err := goose.SetDialect(string(goose.DialectMySQL)); err != nil {
-		app.Log.Fatal(err, "goose").Msg("Failed to set dialect")
+		app.Log().Fatal(err, "goose").Msg("Failed to set dialect")
 	}
 
-	db, err := app.DB.DB()
+	db, err := app.DB().DB()
 	if err != nil {
-		app.Log.Fatal(err, "goose").Msg("Failed to openDB")
+		app.Log().Fatal(err, "goose").Msg("Failed to openDB")
 	}
 	return &Goose{db: db, dir: "migrations", app: app}
 }
 
 func (g *Goose) Run(ctx context.Context, command string, args ...string) {
 	if err := goose.RunContext(ctx, command, g.db, g.dir, args...); err != nil {
-		g.app.Log.Fatal(err, "goose").Msgf("Command %s", command)
+		g.app.Log().Fatal(err, "goose").Msgf("Command %s", command)
 	}
 }

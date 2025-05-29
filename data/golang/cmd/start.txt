@@ -15,7 +15,7 @@ import (
 	"os"
 	"os/signal"
 	"portalnesia/internal/config"
-	"portalnesia/internal/server"
+	"portalnesia/internal/rest"
 	"portalnesia/pkg/discord"
 	"portalnesia/pkg/rabbitmq"
 	"portalnesia/pkg/telegram"
@@ -51,9 +51,9 @@ to quickly create a Cobra application.`,
 		ports := viper.GetIntSlice("ports")
 		for _, port := range ports {
 			go func() {
-				apps.Log.Info("system").Msgf("Starting server on port %d", port)
+				apps.Log().Info("system").Msgf("Starting server on port %d", port)
 				if err := fiberApp.Fiber.Listen(fmt.Sprintf("127.0.0.1:%d", port)); err != nil {
-					apps.Log.Error(err, "system").Msgf("Portalnesia API Server is error when running on port %d", port)
+					apps.Log().Error(err, "system").Msgf("Portalnesia API Server is error when running on port %d", port)
 				}
 			}()
 		}

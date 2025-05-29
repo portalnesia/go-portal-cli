@@ -12,8 +12,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-var Log Logger
-
 type Logger struct {
 	logger zerolog.Logger
 }

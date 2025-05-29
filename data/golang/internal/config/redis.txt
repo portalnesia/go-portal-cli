@@ -9,12 +9,12 @@ package config
 
 import (
 	"fmt"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/session"
-	fiberredis "github.com/gofiber/storage/redis/v3"
-	"github.com/google/uuid"
-	"time"
-	"github.com/spf13/viper"
+    "github.com/gofiber/fiber/v2"
+    "github.com/gofiber/fiber/v2/middleware/session"
+    fiberredis "github.com/gofiber/storage/redis/v3"
+    "github.com/google/uuid"
+    "github.com/spf13/viper"
+    "time"
 )
 
 func initFiberStorage(clientName string) *fiberredis.Storage {
@@ -37,6 +37,6 @@ func initSession(storage fiber.Storage) (sessionStore *session.Store) {
 	return
 }
 
-func (a *App) GetRedisKeyf(key string, format ...any) string {
+func (a *app) GetRedisKeyf(key string, format ...any) string {
 	return "app_name:" + fmt.Sprintf(key, format...)
 }

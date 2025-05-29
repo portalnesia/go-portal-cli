@@ -1,0 +1,53 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package config
+
+import (
+	"github.com/coreos/go-semver/semver"
+    "github.com/gofiber/fiber/v2"
+    "github.com/gofiber/fiber/v2/middleware/session"
+    "github.com/redis/go-redis/v9"
+    pncrypto "go.portalnesia.com/crypto"
+    "gorm.io/gorm"
+)
+
+func (a *app) IsProduction() bool {
+	return a.isProduction
+}
+
+func (a *app) DB() *gorm.DB {
+	return a.dB
+}
+
+func (a *app) Crypto() pncrypto.Crypto {
+	return a.crypto
+}
+
+func (a *app) Embed() Embed {
+	return a.embed
+}
+
+func (a *app) Log() *Logger {
+	return a.log
+}
+
+func (a *app) Redis() redis.UniversalClient {
+	return a.redis
+}
+
+func (a *app) FiberStorage() fiber.Storage {
+	return a.fiberStorage
+}
+
+func (a *app) SessionStore() *session.Store {
+	return a.sessionStore
+}
+
+func Version() semver.Version {
+	return *version
+}

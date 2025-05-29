@@ -8,17 +8,77 @@
 package config
 
 import (
+    context2 "context"
 	"github.com/gofiber/fiber/v2"
 	"go.portalnesia.com/nullable"
+	"os"
+	"APP_NAME/internal/cerror"
+	"APP_NAME/internal/config"
+	"APP_NAME/internal/context"
+	"APP_NAME/internal/request"
 	"APP_NAME/pkg/helper"
 )
+
+func getCtx(app config.App, c *fiber.Ctx) (*context.Context, error) {
+	ctx, ok := c.Locals("ctx").(*context.Context)
+	if !ok {
+		app.Log().Warn("server").Msg("Failed to get context")
+		return nil, cerror.Server()
+	}
+	return ctx, nil
+}
+
+func newService(app config.App, c *fiber.Ctx, handler func(ctx *context.Context, query *request.Request) error) error {
+	var (
+		req request.Request
+	)
+
+	ctx, err := getCtx(app, c)
+	if err != nil {
+		return err
+	}
+	ctx.Context(c.UserContext())
+
+	if err = c.QueryParser(&req); err != nil {
+		app.Log().Error(err, "server").Msg("Failed to parse query request")
+		return cerror.InvalidParameter("request", err)
+	}
+	req.Init(ctx)
+
+	errorTrx := handler(ctx, &req)
+
+	if sess, errSess := app.SessionStore().Get(c); errSess == nil {
+		_ = sess.Save()
+	}
+
+	if tmp := c.Locals("remove_tmp_file"); tmp != nil {
+		if tmpPaths, ok := tmp.([]string); ok && len(tmpPaths) > 0 {
+			// remove temp file
+			go func() {
+				for _, tmpPath := range tmpPaths {
+					if _, err = os.Stat(tmpPath); err == nil {
+						if errRemove := os.Remove(tmpPath); errRemove != nil {
+							app.Log().Error(err, "response").Msg("Error remove temp saved_file")
+						}
+					}
+				}
+			}()
+		}
+	}
+
+	if errorTrx != nil {
+		return errorTrx
+	}
+
+	return nil
+}
 
 type ResponseData struct {
 	Data    *nullable.Type[any] `json:"data,omitempty"`
 	Message string              `json:"message"`
 }
 
-func (a *App) Response(c *fiber.Ctx, data any, message ...any) error {
+func response(c *fiber.Ctx, data any, message ...any) error {
 	msg := "Success"
 	httpCode := 200
 

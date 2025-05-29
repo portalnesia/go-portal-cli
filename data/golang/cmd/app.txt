@@ -15,7 +15,7 @@ import (
 var appConfig *config.Config
 
 func addCommands(rootCmd *cobra.Command) {
-	rootCmd.AddCommand(startCmd)
+	rootCmd.AddCommand(restCmd)
 
 	// mark completion hidden
 	rootCmd.AddCommand(completionCommand)
@@ -33,7 +33,7 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-		Version: config.GetVersion().String(),
+		Version: config.Version().String(),
 	}
 
 	appConfig = &config.Config{

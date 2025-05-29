@@ -436,7 +436,7 @@ func (c *initType) initConfigDatabase(wg *sync.WaitGroup, res chan<- config2.Bui
 									Fun: &ast.SelectorExpr{
 										X: &ast.CallExpr{
 											Fun: &ast.SelectorExpr{
-												X:   ast.NewIdent("Log"),
+												X:   ast.NewIdent("log"),
 												Sel: ast.NewIdent("Fatal"),
 											},
 											Args: []ast.Expr{

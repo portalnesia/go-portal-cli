@@ -9,7 +9,7 @@ package cerror
 
 const ErrorServer int = 500
 
-func (e *Exception) Server(err ...interface{}) *Error {
+func Server(err ...interface{}) *Error {
 	m := "internal server error"
 	var stack error
 	if len(err) == 1 {
@@ -22,5 +22,5 @@ func (e *Exception) Server(err ...interface{}) *Error {
 			stack = v
 		}
 	}
-	return newError(503, ErrorServer, "server", m, stack)
+	return NewError(503, ErrorServer, "server", m, stack)
 }

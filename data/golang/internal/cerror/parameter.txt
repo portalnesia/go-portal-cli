@@ -20,13 +20,13 @@ const (
 	NameBadParameter      = "bad_parameter"
 )
 
-func (e *Exception) BadParameter(whatMissing string) *Error {
+func BadParameter(whatMissing string) *Error {
 	msg := fmt.Sprintf("Missing `%s` parameter", whatMissing)
 
-	return newError(400, ErrorBadParameter, NameBadParameter, msg)
+	return NewError(400, ErrorBadParameter, NameBadParameter, msg)
 }
 
-func (e *Exception) InvalidParameter(whatInvalid string, other ...any) *Error {
+func InvalidParameter(whatInvalid string, other ...any) *Error {
 	msg := fmt.Sprintf("Invalid `%s` parameter", whatInvalid)
 
 	var err error
@@ -43,18 +43,18 @@ func (e *Exception) InvalidParameter(whatInvalid string, other ...any) *Error {
 		}
 	}
 
-	return newError(400, ErrorInvalidParameter, NameBadParameter, msg, err)
+	return NewError(400, ErrorInvalidParameter, NameBadParameter, msg, err)
 }
 
-func (e *Exception) ValidateError(err error) *Error {
+func ValidateError(err error) *Error {
 	var invalidValidationError *validator.InvalidValidationError
 	if errors.As(err, &invalidValidationError) {
-		return e.Server(err)
+		return Server(err)
 	}
 	for _, er := range err.(validator.ValidationErrors) {
-		return newError(400, ErrorInvalidParameter, "bad_parameter", msgForTag(er), er)
+		return NewError(400, ErrorInvalidParameter, "bad_parameter", msgForTag(er), er)
 	}
-	return newError(400, ErrorInvalidParameter, "bad_parameter", "Invalid request", err)
+	return NewError(400, ErrorInvalidParameter, "bad_parameter", "Invalid request", err)
 }
 
 func msgForTag(fe validator.FieldError) string {

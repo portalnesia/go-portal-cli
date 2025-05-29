@@ -1,0 +1,30 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package firebase
+
+import (
+	"context"
+	firebase "firebase.google.com/go/v4"
+)
+
+var (
+	firebaseApp *firebase.App
+)
+
+func New(ctx context.Context) (*firebase.App, error) {
+	if firebaseApp != nil {
+		return firebaseApp, nil
+	}
+	var err error
+	firebaseApp, err = firebase.NewApp(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return firebaseApp, nil
+}

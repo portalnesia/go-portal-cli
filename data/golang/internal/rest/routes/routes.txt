@@ -12,15 +12,16 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/favicon"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"net/http"
-	"APP_NAME/internal/server/config"
+	"APP_NAME/internal/config"
+	"APP_NAME/internal/cerror"
 )
 
 type Routes struct {
-	app   *config.App
+	app   config.App
 	fiber *fiber.App
 }
 
-func NewRoutes(app *config.App, fiberApp *fiber.App) {
+func NewRoutes(app config.App, fiberApp *fiber.App) {
 	routes := &Routes{
 		app:   app,
 		fiber: fiberApp,
@@ -42,14 +43,14 @@ func (r *Routes) setup() {
 			"error":   false,
 			"message": "Success",
 			"data": map[string]string{
-				"version": r.app.App.GetVersion().String(),
+				"version": config.Version().String(),
 			},
 		})
 	})
 
 	r.initRoutes()
 
-	publicFS := http.FS(r.app.App.Embed.Public)
+	publicFS := http.FS(r.app.Embed().Public)
 
 	r.fiber.Use(favicon.New(favicon.Config{
 		File:       "public/favicon.ico",
@@ -63,7 +64,7 @@ func (r *Routes) setup() {
 	}))
 
 	r.fiber.Use(func(c *fiber.Ctx) error {
-		err := r.app.Exception.EndpointNotFound()
+		err := cerror.EndpointNotFound()
 		return c.Status(err.Status).JSON(fiber.Map{
 			"data":  nil,
 			"error": err,

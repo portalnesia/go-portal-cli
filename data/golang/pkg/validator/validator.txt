@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-func initValidator() *validator.Validate {
+func New() *validator.Validate {
 	validate := validator.New()
 
 	validate.RegisterTagNameFunc(func(fld reflect.StructField) string {

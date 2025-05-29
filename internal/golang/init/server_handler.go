@@ -14,15 +14,15 @@ import (
 	"sync"
 )
 
-func (c *initType) initServerConfigApp(wg *sync.WaitGroup, res chan<- config2.Builder) {
+func (c *initType) initServerHandlerUtils(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
-	_, _ = color.New(color.FgBlue).Printf("Generating internal/server/config/app.go\n")
+	_, _ = color.New(color.FgBlue).Printf("Generating internal/rest/handler/utils.go\n")
 
-	src, _ := c.app.DataEmbed.ReadFile("data/golang/internal/server/config/app.txt")
+	src, _ := c.app.DataEmbed.ReadFile("data/golang/internal/rest/handler/utils.txt")
 	srcStr := string(src)
 	srcStr = strings.ReplaceAll(srcStr, "APP_NAME", c.cfg.Module)
 	if c.cfg.Redis {
-		srcStr = strings.ReplaceAll(srcStr, "{{IF_REDIS}}", `if sess, errSess := a.App.SessionStore.Get(c); errSess == nil {
+		srcStr = strings.ReplaceAll(srcStr, "{{IF_REDIS}}", `if sess, errSess := app.SessionStore().Get(c); errSess == nil {
 		_ = sess.Save()
 	}`)
 	} else {
@@ -33,6 +33,6 @@ func (c *initType) initServerConfigApp(wg *sync.WaitGroup, res chan<- config2.Bu
 
 	res <- config2.Builder{
 		Static:   src,
-		Pathname: "internal/server/config/app.go",
+		Pathname: "internal/rest/handler/utils.go",
 	}
 }

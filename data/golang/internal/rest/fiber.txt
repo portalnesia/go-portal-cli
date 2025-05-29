@@ -21,26 +21,23 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"APP_NAME/internal/cerror"
 	"APP_NAME/internal/config"
-	config2 "APP_NAME/internal/server/config"
-	"APP_NAME/internal/server/middleware"
-	"APP_NAME/internal/server/routes"
+	"APP_NAME/internal/rest/middleware"
+	"APP_NAME/internal/rest/routes"
 	"strings"
 	"time"
 )
 
 type Server struct {
-	app   *config.App
+	app   config.App
 	Fiber *fiber.App
 }
 
-func New(app *config.App) (server *Server) {
+func New(app config.App) (server *Server) {
 	fiber.SetParserDecoder(fiber.ParserConfig{
 		IgnoreUnknownKeys: true,
 		ParserType:        registerDecoder(),
 		ZeroEmpty:         true,
 	})
-
-	exc := cerror.New()
 
 	fiberApp := fiber.New(fiber.Config{
 		BodyLimit:          10 * 1024 * 1024,
@@ -50,7 +47,7 @@ func New(app *config.App) (server *Server) {
 		ErrorHandler: func(c *fiber.Ctx, errHandler error) error {
 			var err *cerror.Error
 			if errors.As(errHandler, &err) && err != nil {
-				app.Log.Debug("error-handler").Str("name", err.Name).Int("code", err.Code).Int("status", err.Status).Stack().Msgf("%s", err.Description)
+				app.Log().Debug("error-handler").Str("name", err.Name).Int("code", err.Code).Int("status", err.Status).Stack().Msgf("%s", err.Description)
 				if err.Name == "internal_server_error" || err.Reason != nil {
 					fmt.Println(err.ErrorStack())
 				}
@@ -66,10 +63,10 @@ func New(app *config.App) (server *Server) {
 					"error": err,
 				})
 			} else {
-				err = exc.Server()
+				err = cerror.Server()
 				errMsg := strings.ToLower(errHandler.Error())
 				if !strings.Contains(errMsg, "error when reading request headers") {
-					app.Log.Error(errHandler, "error-handler").Stack().Msg("Error")
+					app.Log().Error(errHandler, "error-handler").Stack().Msg("Error")
 				}
 
 				err.Reason = &cerror.Reason{
@@ -90,7 +87,7 @@ func New(app *config.App) (server *Server) {
 		EnableStackTrace: true,
 	}))
 
-	if !app.IsProduction {
+	if !app.IsProduction() {
 		// Logger
 		fiberApp.Use(logger.New())
 	}
@@ -109,7 +106,7 @@ func New(app *config.App) (server *Server) {
 	fiberApp.Use(requestid.New())
 
 	// Middleware
-	fiberApp.Use(middleware.Init(app))
+	fiberApp.Use(middleware.Init)
 
 	// Cors
 
@@ -117,11 +114,7 @@ func New(app *config.App) (server *Server) {
 
 	fiberApp.Use(idempotency.New())
 
-	appServer := &config2.App{
-		Exception:  exc,
-		App:        app,
-	}
-	routes.NewRoutes(appServer, fiberApp)
+	routes.NewRoutes(app, fiberApp)
 
 	return &Server{
 		app:   app,
@@ -130,8 +123,8 @@ func New(app *config.App) (server *Server) {
 }
 
 func (f *Server) Close() {
-	f.app.Log.Info("system").Msg("Closing server...")
+	f.app.Log().Info("system").Msg("Closing server...")
 	if err := f.Fiber.ShutdownWithTimeout(time.Second * 10); err != nil {
-		f.app.Log.Error(err, "server").Msg("Error when shutting down server")
+		f.app.Log().Error(err, "server").Msg("Error when shutting down server")
 	}
 }

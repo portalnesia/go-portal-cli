@@ -28,7 +28,7 @@ func (c *initType) initCmdStart(wg *sync.WaitGroup, res chan<- config2.Builder) 
 		`"os"`,
 		`"os/signal"`,
 		fmt.Sprintf(`"%s/internal/config"`, c.cfg.Module),
-		fmt.Sprintf(`"%s/internal/server"`, c.cfg.Module),
+		fmt.Sprintf(`"%s/internal/rest"`, c.cfg.Module),
 		`"syscall"`,
 	}
 	decls := make([]ast.Decl, 0)
@@ -59,18 +59,6 @@ func (c *initType) initCmdStart(wg *sync.WaitGroup, res chan<- config2.Builder) 
 				&ast.SelectorExpr{
 					X:   ast.NewIdent("app"),
 					Sel: ast.NewIdent("Redis"),
-				},
-			},
-			Tok: token.ASSIGN,
-			Rhs: []ast.Expr{ast.NewIdent("true")},
-		})
-	}
-	if c.cfg.Firebase {
-		runFunc = append(runFunc, &ast.AssignStmt{
-			Lhs: []ast.Expr{
-				&ast.SelectorExpr{
-					X:   ast.NewIdent("app"),
-					Sel: ast.NewIdent("Firebase"),
 				},
 			},
 			Tok: token.ASSIGN,
@@ -160,9 +148,11 @@ func (c *initType) initCmdStart(wg *sync.WaitGroup, res chan<- config2.Builder) 
 												Fun: &ast.SelectorExpr{
 													X: &ast.CallExpr{
 														Fun: &ast.SelectorExpr{
-															X: &ast.SelectorExpr{
-																X:   ast.NewIdent("apps"),
-																Sel: ast.NewIdent("Log"),
+															X: &ast.CallExpr{
+																Fun: &ast.SelectorExpr{
+																	X:   ast.NewIdent("apps"),
+																	Sel: ast.NewIdent("Log"),
+																},
 															},
 															Sel: ast.NewIdent("Info"),
 														},
@@ -224,9 +214,11 @@ func (c *initType) initCmdStart(wg *sync.WaitGroup, res chan<- config2.Builder) 
 															Fun: &ast.SelectorExpr{
 																X: &ast.CallExpr{
 																	Fun: &ast.SelectorExpr{
-																		X: &ast.SelectorExpr{
-																			X:   ast.NewIdent("apps"),
-																			Sel: ast.NewIdent("Log"),
+																		X: &ast.CallExpr{
+																			Fun: &ast.SelectorExpr{
+																				X:   ast.NewIdent("apps"),
+																				Sel: ast.NewIdent("Log"),
+																			},
 																		},
 																		Sel: ast.NewIdent("Error"),
 																	},
@@ -333,7 +325,7 @@ func (c *initType) initCmdStart(wg *sync.WaitGroup, res chan<- config2.Builder) 
 		Tok: token.VAR,
 		Specs: []ast.Spec{
 			&ast.ValueSpec{
-				Names: []*ast.Ident{ast.NewIdent("startCmd")},
+				Names: []*ast.Ident{ast.NewIdent("restCmd")},
 				Values: []ast.Expr{
 					&ast.UnaryExpr{
 						Op: token.AND,
@@ -343,12 +335,12 @@ func (c *initType) initCmdStart(wg *sync.WaitGroup, res chan<- config2.Builder) 
 								Sel: ast.NewIdent("Command"),
 							},
 							Elts: []ast.Expr{
-								// Use: "start"
+								// Use: "rest"
 								&ast.KeyValueExpr{
 									Key: ast.NewIdent("Use"),
 									Value: &ast.BasicLit{
 										Kind:  token.STRING,
-										Value: `"start"`,
+										Value: `"rest"`,
 									},
 								},
 								// Short: "A brief description..."
@@ -413,6 +405,6 @@ func (c *initType) initCmdStart(wg *sync.WaitGroup, res chan<- config2.Builder) 
 
 	res <- config2.Builder{
 		File:     file,
-		Pathname: "cmd/start.go",
+		Pathname: "cmd/rest.go",
 	}
 }

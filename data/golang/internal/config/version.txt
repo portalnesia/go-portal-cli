@@ -11,14 +11,6 @@ import "github.com/coreos/go-semver/semver"
 
 var version = semver.New(tmpVersion)
 
-func GetVersion() *semver.Version {
-	return version
-}
-
-func (a *App) GetVersion() *semver.Version {
-	return version
-}
-
 func InitVersion(tag, commitRef string) {
 	if tag != "" {
 		tmpVersion = tag

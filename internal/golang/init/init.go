@@ -47,9 +47,6 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 	if cfg.Redis {
 		go c.initConfigRedis(wg, respChan)
 	}
-	if cfg.Firebase {
-		go c.initConfigFirebase(wg, respChan)
-	}
 	if cfg.Handlebars {
 		go c.initConfigHandlebars(wg, respChan)
 	}
@@ -60,17 +57,16 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 	go c.initConfigDatabase(wg, respChan)
 	go c.initConfigLog(wg, respChan)
 	go c.initConfigApp(wg, respChan)
-	go c.initConfigValidator(wg, respChan)
+	go c.initServerHandlerUtils(wg, respChan)
 
-	go c.initServerConfigApp(wg, respChan)
 	go c.initCmdStart(wg, respChan)
 
 	files := []string{
-		"internal/server/config/response",
-		"internal/server/routes/routes",
-		"internal/server/middleware/middleware",
-		"internal/server/decoder",
-		"internal/server/fiber",
+		"internal/config/getter",
+		"internal/rest/routes/routes",
+		"internal/rest/middleware/middleware",
+		"internal/rest/decoder",
+		"internal/rest/fiber",
 
 		"internal/cerror/exception",
 		"internal/cerror/notfound",
@@ -80,9 +76,13 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 		"internal/request/request",
 		"pkg/helper/main",
 		"pkg/migration/migration",
+		"pkg/validator/validator",
 		"cmd/completion",
 		"cmd/app",
 		"main",
+	}
+	if cfg.Firebase {
+		files = append(files, "pkg/firebase/firebase")
 	}
 	for _, f := range files {
 		go c.addStatic(f, wg, respChan)

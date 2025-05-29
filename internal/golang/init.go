@@ -35,8 +35,7 @@ func (g *Golang) Init(cfg config2.InitConfig) error {
 	close(resChan)
 
 	dirs := []string{
-		g.app.Dir("internal/server/handler"),
-		g.app.Dir("internal/server/usecase"),
+		g.app.Dir("internal/rest/service"),
 	}
 	for _, d := range dirs {
 		if err := os.MkdirAll(d, 0755); err != nil {

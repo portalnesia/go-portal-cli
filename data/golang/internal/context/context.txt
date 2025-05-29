@@ -20,11 +20,13 @@ type Context struct {
 	ctx context2.Context
 }
 
-func (c *Context) SetContext(ctx context2.Context) {
-	c.ctx = ctx
-}
-
-func (c *Context) GetContext() context2.Context {
+func (c Context) Context(ctx ...context2.Context) context2.Context {
+	if len(ctx) > 0 {
+		c.ctx = ctx[0]
+	}
+	if c.ctx == nil {
+		c.ctx = context2.Background()
+	}
 	return c.ctx
 }
 
