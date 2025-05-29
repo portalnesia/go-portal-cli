@@ -30,7 +30,7 @@ func (s *addService) addServiceRoutes(wg *sync.WaitGroup, res chan<- config2.Bui
 
 	_, _ = color.New(color.FgBlue).Printf("Generating routes\n")
 	pkgImport := []string{
-		fmt.Sprintf(`"%s/internal/server/handler"`, s.cfg.Module),
+		fmt.Sprintf(`"%s/internal/rest/handler"`, s.cfg.Module),
 	}
 	decls := make([]ast.Decl, 0)
 
@@ -220,7 +220,7 @@ func (s *addService) addServiceRoutes(wg *sync.WaitGroup, res chan<- config2.Bui
 
 	res <- config2.Builder{
 		File:     file,
-		Pathname: fmt.Sprintf("internal/server/routes/%s.go", s.cfg.Name),
+		Pathname: fmt.Sprintf("internal/rest/routes/%s_route.go", s.cfg.Name),
 	}
 }
 
@@ -236,7 +236,7 @@ func (s *addService) addToRoutes(wg *sync.WaitGroup, res chan<- config2.Builder)
 	}()
 
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, s.app.Dir("internal/server/routes/routes.go"), nil, parser.AllErrors)
+	file, err := parser.ParseFile(fset, s.app.Dir("internal/rest/routes/routes.go"), nil, parser.AllErrors)
 	if err != nil {
 		resp.Err = err
 		return
@@ -261,7 +261,7 @@ func (s *addService) addToRoutes(wg *sync.WaitGroup, res chan<- config2.Builder)
 				// Append ke Body.List
 				funcDecl.Body.List = append(funcDecl.Body.List, stmt)
 				resp.File = file
-				resp.Pathname = "internal/server/routes/routes.go"
+				resp.Pathname = "internal/rest/routes/routes.go"
 				break
 			}
 		}
@@ -286,7 +286,7 @@ func (s *addEndpoint) addEndpointRoutes(wg *sync.WaitGroup, res chan<- config2.B
 	}()
 
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, s.app.Dir(fmt.Sprintf("internal/server/routes/%s.go", s.cfg.ServiceName)), nil, parser.AllErrors)
+	file, err := parser.ParseFile(fset, s.app.Dir(fmt.Sprintf("internal/rest/routes/%s_route.go", s.cfg.ServiceName)), nil, parser.AllErrors)
 	if err != nil {
 		resp.Err = err
 		return
@@ -341,6 +341,6 @@ func (s *addEndpoint) addEndpointRoutes(wg *sync.WaitGroup, res chan<- config2.B
 
 	resp = config2.Builder{
 		File:     file,
-		Pathname: fmt.Sprintf("internal/server/routes/%s.go", s.cfg.ServiceName),
+		Pathname: fmt.Sprintf("internal/rest/routes/%s_route.go", s.cfg.ServiceName),
 	}
 }

@@ -29,11 +29,10 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 	_, _ = color.New(color.FgBlue).Printf("Generating handler\n")
 	pkgImport := []string{
 		`"github.com/gofiber/fiber/v2"`,
-		`"gorm.io/gorm"`,
 		fmt.Sprintf(`"%s/internal/context"`, s.cfg.Module),
 		fmt.Sprintf(`"%s/internal/request"`, s.cfg.Module),
-		fmt.Sprintf(`"%s/internal/server/config"`, s.cfg.Module),
-		fmt.Sprintf(`"%s/internal/server/usecase"`, s.cfg.Module),
+		fmt.Sprintf(`"%s/internal/config"`, s.cfg.Module),
+		fmt.Sprintf(`"%s/internal/service"`, s.cfg.Module),
 	}
 	decls := make([]ast.Decl, 0)
 
@@ -42,7 +41,7 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 		Tok: token.TYPE,
 		Doc: &ast.CommentGroup{
 			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
+				{Text: "//"}, // Komentar kosong untuk newline
 			},
 		},
 		Specs: []ast.Spec{
@@ -52,18 +51,17 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 					Fields: &ast.FieldList{
 						List: []*ast.Field{
 							{
-								Type: &ast.StarExpr{
-									X: &ast.SelectorExpr{
-										X:   ast.NewIdent("config"),
-										Sel: ast.NewIdent("App"),
-									},
+								Names: []*ast.Ident{ast.NewIdent("app")},
+								Type: &ast.SelectorExpr{
+									X:   ast.NewIdent("config"),
+									Sel: ast.NewIdent("App"),
 								},
 							},
 							{
-								Names: []*ast.Ident{ast.NewIdent("u")},
+								Names: []*ast.Ident{ast.NewIdent("s")},
 								Type: &ast.StarExpr{
 									X: &ast.SelectorExpr{
-										X:   ast.NewIdent("usecase"),
+										X:   ast.NewIdent("service"),
 										Sel: ast.NewIdent(serviceName),
 									},
 								},
@@ -88,11 +86,9 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 				List: []*ast.Field{
 					{
 						Names: []*ast.Ident{ast.NewIdent("app")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("config"),
-								Sel: ast.NewIdent("App"),
-							},
+						Type: &ast.SelectorExpr{
+							X:   ast.NewIdent("config"),
+							Sel: ast.NewIdent("App"),
 						},
 					},
 				},
@@ -111,12 +107,12 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 			List: []ast.Stmt{
 				// u := usecase.NewTest(app)
 				&ast.AssignStmt{
-					Lhs: []ast.Expr{ast.NewIdent("u")},
+					Lhs: []ast.Expr{ast.NewIdent("s")},
 					Tok: token.DEFINE,
 					Rhs: []ast.Expr{
 						&ast.CallExpr{
 							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent("usecase"),
+								X:   ast.NewIdent("service"),
 								Sel: ast.NewIdent(fmt.Sprintf("New%s", serviceName)),
 							},
 							Args: []ast.Expr{
@@ -134,7 +130,7 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 								Type: ast.NewIdent(serviceName),
 								Elts: []ast.Expr{
 									ast.NewIdent("app"),
-									ast.NewIdent("u"),
+									ast.NewIdent("s"),
 								},
 							},
 						},
@@ -185,11 +181,12 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 				&ast.ReturnStmt{
 					Results: []ast.Expr{
 						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent(ins),
-								Sel: ast.NewIdent("NewService"),
-							},
+							Fun: ast.NewIdent("newHandler"),
 							Args: []ast.Expr{
+								&ast.SelectorExpr{
+									X:   ast.NewIdent(ins),
+									Sel: ast.NewIdent("app"),
+								},
 								ast.NewIdent("c"),
 								&ast.FuncLit{
 									Type: &ast.FuncType{
@@ -210,15 +207,6 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 														X: &ast.SelectorExpr{
 															X:   ast.NewIdent("request"),
 															Sel: ast.NewIdent("Request"),
-														},
-													},
-												},
-												{
-													Names: []*ast.Ident{ast.NewIdent("trxDb")},
-													Type: &ast.StarExpr{
-														X: &ast.SelectorExpr{
-															X:   ast.NewIdent("gorm"),
-															Sel: ast.NewIdent("DB"),
 														},
 													},
 												},
@@ -251,7 +239,7 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 													},
 												},
 											},
-											// data, err := t.u.GetTest(ctx, trxDb, query)
+											// data, err := t.u.GetTest(ctx, query)
 											&ast.AssignStmt{
 												Lhs: []ast.Expr{
 													ast.NewIdent("data"),
@@ -263,13 +251,12 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 														Fun: &ast.SelectorExpr{
 															X: &ast.SelectorExpr{
 																X:   ast.NewIdent(ins),
-																Sel: ast.NewIdent("u"),
+																Sel: ast.NewIdent("s"),
 															},
 															Sel: ast.NewIdent(fmt.Sprintf("Get%s", serviceName)),
 														},
 														Args: []ast.Expr{
 															ast.NewIdent("ctx"),
-															ast.NewIdent("trxDb"),
 															ast.NewIdent("query"),
 															ast.NewIdent("id"),
 														},
@@ -295,10 +282,7 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 											&ast.ReturnStmt{
 												Results: []ast.Expr{
 													&ast.CallExpr{
-														Fun: &ast.SelectorExpr{
-															X:   ast.NewIdent(ins),
-															Sel: ast.NewIdent("Response"),
-														},
+														Fun: ast.NewIdent("newResponse"),
 														Args: []ast.Expr{
 															ast.NewIdent("c"),
 															ast.NewIdent("data"),
@@ -358,11 +342,12 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 				&ast.ReturnStmt{
 					Results: []ast.Expr{
 						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent(ins),
-								Sel: ast.NewIdent("NewService"),
-							},
+							Fun: ast.NewIdent("newHandler"),
 							Args: []ast.Expr{
+								&ast.SelectorExpr{
+									X:   ast.NewIdent(ins),
+									Sel: ast.NewIdent("app"),
+								},
 								ast.NewIdent("c"),
 								&ast.FuncLit{
 									Type: &ast.FuncType{
@@ -383,15 +368,6 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 														X: &ast.SelectorExpr{
 															X:   ast.NewIdent("request"),
 															Sel: ast.NewIdent("Request"),
-														},
-													},
-												},
-												{
-													Names: []*ast.Ident{ast.NewIdent("trxDb")},
-													Type: &ast.StarExpr{
-														X: &ast.SelectorExpr{
-															X:   ast.NewIdent("gorm"),
-															Sel: ast.NewIdent("DB"),
 														},
 													},
 												},
@@ -417,13 +393,12 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 														Fun: &ast.SelectorExpr{
 															X: &ast.SelectorExpr{
 																X:   ast.NewIdent(ins),
-																Sel: ast.NewIdent("u"),
+																Sel: ast.NewIdent("s"),
 															},
 															Sel: ast.NewIdent(fmt.Sprintf("List%s", serviceName)),
 														},
 														Args: []ast.Expr{
 															ast.NewIdent("ctx"),
-															ast.NewIdent("trxDb"),
 															ast.NewIdent("query"),
 														},
 													},
@@ -448,10 +423,7 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 											&ast.ReturnStmt{
 												Results: []ast.Expr{
 													&ast.CallExpr{
-														Fun: &ast.SelectorExpr{
-															X:   ast.NewIdent(ins),
-															Sel: ast.NewIdent("Response"),
-														},
+														Fun: ast.NewIdent("newResponse"),
 														Args: []ast.Expr{
 															ast.NewIdent("c"),
 															ast.NewIdent("data"),
@@ -511,11 +483,12 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 				&ast.ReturnStmt{
 					Results: []ast.Expr{
 						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent(ins),
-								Sel: ast.NewIdent("NewService"),
-							},
+							Fun: ast.NewIdent("newHandler"),
 							Args: []ast.Expr{
+								&ast.SelectorExpr{
+									X:   ast.NewIdent(ins),
+									Sel: ast.NewIdent("app"),
+								},
 								ast.NewIdent("c"),
 								&ast.FuncLit{
 									Type: &ast.FuncType{
@@ -536,15 +509,6 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 														X: &ast.SelectorExpr{
 															X:   ast.NewIdent("request"),
 															Sel: ast.NewIdent("Request"),
-														},
-													},
-												},
-												{
-													Names: []*ast.Ident{ast.NewIdent("trxDb")},
-													Type: &ast.StarExpr{
-														X: &ast.SelectorExpr{
-															X:   ast.NewIdent("gorm"),
-															Sel: ast.NewIdent("DB"),
 														},
 													},
 												},
@@ -570,13 +534,12 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 														Fun: &ast.SelectorExpr{
 															X: &ast.SelectorExpr{
 																X:   ast.NewIdent(ins),
-																Sel: ast.NewIdent("u"),
+																Sel: ast.NewIdent("s"),
 															},
 															Sel: ast.NewIdent(fmt.Sprintf("Create%s", serviceName)),
 														},
 														Args: []ast.Expr{
 															ast.NewIdent("ctx"),
-															ast.NewIdent("trxDb"),
 															ast.NewIdent("query"),
 														},
 													},
@@ -601,10 +564,7 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 											&ast.ReturnStmt{
 												Results: []ast.Expr{
 													&ast.CallExpr{
-														Fun: &ast.SelectorExpr{
-															X:   ast.NewIdent(ins),
-															Sel: ast.NewIdent("Response"),
-														},
+														Fun: ast.NewIdent("newResponse"),
 														Args: []ast.Expr{
 															ast.NewIdent("c"),
 															ast.NewIdent("data"),
@@ -668,11 +628,12 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 				&ast.ReturnStmt{
 					Results: []ast.Expr{
 						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent(ins),
-								Sel: ast.NewIdent("NewService"),
-							},
+							Fun: ast.NewIdent("newHandler"),
 							Args: []ast.Expr{
+								&ast.SelectorExpr{
+									X:   ast.NewIdent(ins),
+									Sel: ast.NewIdent("app"),
+								},
 								ast.NewIdent("c"),
 								&ast.FuncLit{
 									Type: &ast.FuncType{
@@ -693,15 +654,6 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 														X: &ast.SelectorExpr{
 															X:   ast.NewIdent("request"),
 															Sel: ast.NewIdent("Request"),
-														},
-													},
-												},
-												{
-													Names: []*ast.Ident{ast.NewIdent("trxDb")},
-													Type: &ast.StarExpr{
-														X: &ast.SelectorExpr{
-															X:   ast.NewIdent("gorm"),
-															Sel: ast.NewIdent("DB"),
 														},
 													},
 												},
@@ -746,13 +698,12 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 														Fun: &ast.SelectorExpr{
 															X: &ast.SelectorExpr{
 																X:   ast.NewIdent(ins),
-																Sel: ast.NewIdent("u"),
+																Sel: ast.NewIdent("s"),
 															},
 															Sel: ast.NewIdent(fmt.Sprintf("Update%s", serviceName)),
 														},
 														Args: []ast.Expr{
 															ast.NewIdent("ctx"),
-															ast.NewIdent("trxDb"),
 															ast.NewIdent("query"),
 															ast.NewIdent("id"),
 														},
@@ -778,10 +729,7 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 											&ast.ReturnStmt{
 												Results: []ast.Expr{
 													&ast.CallExpr{
-														Fun: &ast.SelectorExpr{
-															X:   ast.NewIdent(ins),
-															Sel: ast.NewIdent("Response"),
-														},
+														Fun: ast.NewIdent("newResponse"),
 														Args: []ast.Expr{
 															ast.NewIdent("c"),
 															ast.NewIdent("data"),
@@ -841,11 +789,12 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 				&ast.ReturnStmt{
 					Results: []ast.Expr{
 						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent(ins),
-								Sel: ast.NewIdent("NewService"),
-							},
+							Fun: ast.NewIdent("newHandler"),
 							Args: []ast.Expr{
+								&ast.SelectorExpr{
+									X:   ast.NewIdent(ins),
+									Sel: ast.NewIdent("app"),
+								},
 								ast.NewIdent("c"),
 								&ast.FuncLit{
 									Type: &ast.FuncType{
@@ -866,15 +815,6 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 														X: &ast.SelectorExpr{
 															X:   ast.NewIdent("request"),
 															Sel: ast.NewIdent("Request"),
-														},
-													},
-												},
-												{
-													Names: []*ast.Ident{ast.NewIdent("trxDb")},
-													Type: &ast.StarExpr{
-														X: &ast.SelectorExpr{
-															X:   ast.NewIdent("gorm"),
-															Sel: ast.NewIdent("DB"),
 														},
 													},
 												},
@@ -918,13 +858,12 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 														Fun: &ast.SelectorExpr{
 															X: &ast.SelectorExpr{
 																X:   ast.NewIdent(ins),
-																Sel: ast.NewIdent("u"),
+																Sel: ast.NewIdent("s"),
 															},
 															Sel: ast.NewIdent(fmt.Sprintf("Delete%s", serviceName)),
 														},
 														Args: []ast.Expr{
 															ast.NewIdent("ctx"),
-															ast.NewIdent("trxDb"),
 															ast.NewIdent("query"),
 															ast.NewIdent("id"),
 														},
@@ -950,10 +889,7 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 											&ast.ReturnStmt{
 												Results: []ast.Expr{
 													&ast.CallExpr{
-														Fun: &ast.SelectorExpr{
-															X:   ast.NewIdent(ins),
-															Sel: ast.NewIdent("Response"),
-														},
+														Fun: ast.NewIdent("newResponse"),
 														Args: []ast.Expr{
 															ast.NewIdent("c"),
 															ast.NewIdent("false"),
@@ -986,7 +922,7 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 
 	res <- config2.Builder{
 		File:     file,
-		Pathname: fmt.Sprintf("internal/server/handler/%s.go", s.cfg.Name),
+		Pathname: fmt.Sprintf("internal/rest/handler/%s_handler.go", s.cfg.Name),
 	}
 }
 
@@ -1005,7 +941,7 @@ func (s *addEndpoint) addEndpointHandler(wg *sync.WaitGroup, res chan<- config2.
 	}()
 
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, s.app.Dir(fmt.Sprintf("internal/server/handler/%s.go", s.cfg.ServiceName)), nil, parser.AllErrors)
+	file, err := parser.ParseFile(fset, s.app.Dir(fmt.Sprintf("internal/rest/handler/%s_handler.go", s.cfg.ServiceName)), nil, parser.AllErrors)
 	if err != nil {
 		resp.Err = err
 		return
@@ -1051,11 +987,12 @@ func (s *addEndpoint) addEndpointHandler(wg *sync.WaitGroup, res chan<- config2.
 				&ast.ReturnStmt{
 					Results: []ast.Expr{
 						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent(ins),
-								Sel: ast.NewIdent("NewService"),
-							},
+							Fun: ast.NewIdent("newHandler"),
 							Args: []ast.Expr{
+								&ast.SelectorExpr{
+									X:   ast.NewIdent(ins),
+									Sel: ast.NewIdent("app"),
+								},
 								ast.NewIdent("c"),
 								&ast.FuncLit{
 									Type: &ast.FuncType{
@@ -1076,15 +1013,6 @@ func (s *addEndpoint) addEndpointHandler(wg *sync.WaitGroup, res chan<- config2.
 														X: &ast.SelectorExpr{
 															X:   ast.NewIdent("request"),
 															Sel: ast.NewIdent("Request"),
-														},
-													},
-												},
-												{
-													Names: []*ast.Ident{ast.NewIdent("trxDb")},
-													Type: &ast.StarExpr{
-														X: &ast.SelectorExpr{
-															X:   ast.NewIdent("gorm"),
-															Sel: ast.NewIdent("DB"),
 														},
 													},
 												},
@@ -1110,13 +1038,12 @@ func (s *addEndpoint) addEndpointHandler(wg *sync.WaitGroup, res chan<- config2.
 														Fun: &ast.SelectorExpr{
 															X: &ast.SelectorExpr{
 																X:   ast.NewIdent(ins),
-																Sel: ast.NewIdent("u"),
+																Sel: ast.NewIdent("s"),
 															},
 															Sel: ast.NewIdent(s.cfg.Name),
 														},
 														Args: []ast.Expr{
 															ast.NewIdent("ctx"),
-															ast.NewIdent("trxDb"),
 															ast.NewIdent("query"),
 														},
 													},
@@ -1141,10 +1068,7 @@ func (s *addEndpoint) addEndpointHandler(wg *sync.WaitGroup, res chan<- config2.
 											&ast.ReturnStmt{
 												Results: []ast.Expr{
 													&ast.CallExpr{
-														Fun: &ast.SelectorExpr{
-															X:   ast.NewIdent(ins),
-															Sel: ast.NewIdent("Response"),
-														},
+														Fun: ast.NewIdent("newResponse"),
 														Args: []ast.Expr{
 															ast.NewIdent("c"),
 															ast.NewIdent("data"),
@@ -1165,6 +1089,6 @@ func (s *addEndpoint) addEndpointHandler(wg *sync.WaitGroup, res chan<- config2.
 
 	resp = config2.Builder{
 		File:     file,
-		Pathname: fmt.Sprintf("internal/server/handler/%s.go", s.cfg.ServiceName),
+		Pathname: fmt.Sprintf("internal/rest/handler/%s_handler.go", s.cfg.ServiceName),
 	}
 }

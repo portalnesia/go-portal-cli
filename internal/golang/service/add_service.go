@@ -24,7 +24,7 @@ func AddService(app *config.App, cfg config2.AddServiceConfig) ([]config2.Builde
 		cfg: cfg,
 	}
 
-	i := 4
+	i := 6
 	var (
 		allFiles = make([]config2.Builder, 0)
 		respChan = make(chan config2.Builder, i)
@@ -32,10 +32,12 @@ func AddService(app *config.App, cfg config2.AddServiceConfig) ([]config2.Builde
 	)
 	wg.Add(i)
 
-	go c.addServiceUsecase(wg, respChan)
 	go c.addServiceHandler(wg, respChan)
+	go c.addServiceUsecase(wg, respChan)
 	go c.addServiceRoutes(wg, respChan)
+	go c.addServiceRepository(wg, respChan)
 	go c.addToRoutes(wg, respChan)
+	go c.addToRepository(wg, respChan)
 
 	wg.Wait()
 	close(respChan)

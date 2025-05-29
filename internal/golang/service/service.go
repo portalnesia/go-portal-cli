@@ -26,13 +26,12 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 	serviceName := utils.Ucwords(s.cfg.Name)
 	ins := strings.ToLower(s.cfg.Name)[0:1]
 
-	_, _ = color.New(color.FgBlue).Printf("Generating usecase\n")
+	_, _ = color.New(color.FgBlue).Printf("Generating service\n")
 	pkgImport := []string{
 		`"errors"`,
-		`"gorm.io/gorm"`,
 		fmt.Sprintf(`context2 "%s/internal/context"`, s.cfg.Module),
+		fmt.Sprintf(`"%s/internal/config"`, s.cfg.Module),
 		fmt.Sprintf(`"%s/internal/request"`, s.cfg.Module),
-		fmt.Sprintf(`"%s/internal/server/config"`, s.cfg.Module),
 	}
 	decls := make([]ast.Decl, 0)
 
@@ -52,11 +51,9 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 						List: []*ast.Field{
 							{
 								Names: []*ast.Ident{ast.NewIdent("app")},
-								Type: &ast.StarExpr{
-									X: &ast.SelectorExpr{
-										X:   ast.NewIdent("config"),
-										Sel: ast.NewIdent("App"),
-									},
+								Type: &ast.SelectorExpr{
+									X:   ast.NewIdent("config"),
+									Sel: ast.NewIdent("App"),
 								},
 							},
 						},
@@ -79,11 +76,9 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 				List: []*ast.Field{
 					{
 						Names: []*ast.Ident{ast.NewIdent("app")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("config"),
-								Sel: ast.NewIdent("App"),
-							},
+						Type: &ast.SelectorExpr{
+							X:   ast.NewIdent("config"),
+							Sel: ast.NewIdent("App"),
 						},
 					},
 				},
@@ -136,15 +131,6 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 							X: &ast.SelectorExpr{
 								X:   ast.NewIdent("context2"),
 								Sel: ast.NewIdent("Context"),
-							},
-						},
-					},
-					{
-						Names: []*ast.Ident{ast.NewIdent("trxDb")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("gorm"),
-								Sel: ast.NewIdent("DB"),
 							},
 						},
 					},
@@ -222,15 +208,6 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 						},
 					},
 					{
-						Names: []*ast.Ident{ast.NewIdent("trxDb")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("gorm"),
-								Sel: ast.NewIdent("DB"),
-							},
-						},
-					},
-					{
 						Names: []*ast.Ident{ast.NewIdent("query")},
 						Type: &ast.StarExpr{
 							X: &ast.SelectorExpr{
@@ -300,15 +277,6 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 						},
 					},
 					{
-						Names: []*ast.Ident{ast.NewIdent("trxDb")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("gorm"),
-								Sel: ast.NewIdent("DB"),
-							},
-						},
-					},
-					{
 						Names: []*ast.Ident{ast.NewIdent("query")},
 						Type: &ast.StarExpr{
 							X: &ast.SelectorExpr{
@@ -374,15 +342,6 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 							X: &ast.SelectorExpr{
 								X:   ast.NewIdent("context2"),
 								Sel: ast.NewIdent("Context"),
-							},
-						},
-					},
-					{
-						Names: []*ast.Ident{ast.NewIdent("trxDb")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("gorm"),
-								Sel: ast.NewIdent("DB"),
 							},
 						},
 					},
@@ -460,15 +419,6 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 						},
 					},
 					{
-						Names: []*ast.Ident{ast.NewIdent("trxDb")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("gorm"),
-								Sel: ast.NewIdent("DB"),
-							},
-						},
-					},
-					{
 						Names: []*ast.Ident{ast.NewIdent("query")},
 						Type: &ast.StarExpr{
 							X: &ast.SelectorExpr{
@@ -514,21 +464,21 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 	imports := helper.GenImport(pkgImport...)
 	decls = append([]ast.Decl{imports.GenDecl()}, decls...)
 	file := &ast.File{
-		Name:    ast.NewIdent("usecase"),
+		Name:    ast.NewIdent("service"),
 		Imports: imports.ImportSpec(),
 		Decls:   decls,
 	}
 
 	res <- config2.Builder{
 		File:     file,
-		Pathname: fmt.Sprintf("internal/server/usecase/%s.go", s.cfg.Name),
+		Pathname: fmt.Sprintf("internal/service/%s_service.go", s.cfg.Name),
 	}
 }
 
 func (s *addEndpoint) addEndpointUsecase(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 
-	_, _ = color.New(color.FgBlue).Printf("Generating usecase\n")
+	_, _ = color.New(color.FgBlue).Printf("Generating service\n")
 
 	serviceName := utils.Ucwords(s.cfg.ServiceName)
 	ins := strings.ToLower(s.cfg.ServiceName)[0:1]
@@ -540,7 +490,7 @@ func (s *addEndpoint) addEndpointUsecase(wg *sync.WaitGroup, res chan<- config2.
 	}()
 
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, s.app.Dir(fmt.Sprintf("internal/server/usecase/%s.go", s.cfg.ServiceName)), nil, parser.AllErrors)
+	file, err := parser.ParseFile(fset, s.app.Dir(fmt.Sprintf("internal/service/%s_service.go", s.cfg.ServiceName)), nil, parser.AllErrors)
 	if err != nil {
 		resp.Err = err
 		return
@@ -570,15 +520,6 @@ func (s *addEndpoint) addEndpointUsecase(wg *sync.WaitGroup, res chan<- config2.
 							X: &ast.SelectorExpr{
 								X:   ast.NewIdent("context2"),
 								Sel: ast.NewIdent("Context"),
-							},
-						},
-					},
-					{
-						Names: []*ast.Ident{ast.NewIdent("trxDb")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("gorm"),
-								Sel: ast.NewIdent("DB"),
 							},
 						},
 					},
@@ -625,6 +566,6 @@ func (s *addEndpoint) addEndpointUsecase(wg *sync.WaitGroup, res chan<- config2.
 
 	resp = config2.Builder{
 		File:     file,
-		Pathname: fmt.Sprintf("internal/server/usecase/%s.go", s.cfg.ServiceName),
+		Pathname: fmt.Sprintf("internal/service/%s_service.go", s.cfg.ServiceName),
 	}
 }

@@ -7,10 +7,22 @@
 
 package repository
 
-type UserRepository interface {
+import (
+    "errors"
+    "APP_NAME/internal/context"
+    "APP_NAME/internal/request"
+)
 
+type UserRepository interface {
+    ListUser(ctx *context.Context, query *request.Request, options ...Options) (any, error)
 }
 
 type userRepository struct {
 	base
+}
+
+func (r userRepository) ListUser(ctx *context.Context, query *request.Request, options ...Options) (any, error) {
+    // db := r.getDatabase(ctx, options...)
+
+    return nil, errors.New("not implemented")
 }
