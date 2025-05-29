@@ -26,7 +26,7 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 		cfg: cfg,
 	}
 
-	i := 29
+	i := 33
 	if cfg.Redis {
 		i += 1
 	}
@@ -62,6 +62,10 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 	go c.initCmdStart(wg, respChan)
 
 	files := []string{
+		"internal/repository/base",
+		"internal/repository/options",
+		"internal/repository/user",
+		"internal/repository/repository",
 		"internal/config/getter",
 		"internal/rest/routes/routes",
 		"internal/rest/middleware/middleware",

@@ -30,6 +30,7 @@ func (c *initType) initConfigApp(wg *sync.WaitGroup, res chan<- config2.Builder)
 		`pncrypto "go.portalnesia.com/crypto"`,
 		`"gorm.io/gorm"`,
 		`"os"`,
+		fmt.Sprintf(`"%s/internal/repository"`, c.cfg.Module),
 		`"strings"`,
 		`"time"`,
 	}
@@ -848,7 +849,7 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 					Lhs: []ast.Expr{
 						&ast.SelectorExpr{
 							X:   ast.NewIdent("apps"),
-							Sel: ast.NewIdent("dB"),
+							Sel: ast.NewIdent("db"),
 						},
 					},
 					Tok: token.ASSIGN,
@@ -856,6 +857,29 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 						&ast.UnaryExpr{
 							Op: token.ARROW,
 							X:  ast.NewIdent("chDb"),
+						},
+					},
+				},
+				&ast.AssignStmt{
+					Lhs: []ast.Expr{
+						&ast.SelectorExpr{
+							X:   ast.NewIdent("apps"),
+							Sel: ast.NewIdent("repo"),
+						},
+					},
+					Tok: token.ASSIGN, // =
+					Rhs: []ast.Expr{
+						&ast.CallExpr{
+							Fun: &ast.SelectorExpr{
+								X:   ast.NewIdent("repository"),
+								Sel: ast.NewIdent("NewRepository"),
+							},
+							Args: []ast.Expr{
+								&ast.SelectorExpr{
+									X:   ast.NewIdent("apps"),
+									Sel: ast.NewIdent("db"),
+								},
+							},
 						},
 					},
 				},
@@ -1060,7 +1084,7 @@ func (c *initType) appInitClose(decls []ast.Decl) []ast.Decl {
 		Cond: &ast.BinaryExpr{
 			X: &ast.SelectorExpr{
 				X:   ast.NewIdent("a"),
-				Sel: ast.NewIdent("dB"),
+				Sel: ast.NewIdent("db"),
 			},
 			Op: token.NEQ,
 			Y:  ast.NewIdent("nil"),
@@ -1109,7 +1133,7 @@ func (c *initType) appInitClose(decls []ast.Decl) []ast.Decl {
 								Fun: &ast.SelectorExpr{
 									X: &ast.SelectorExpr{
 										X:   ast.NewIdent("a"),
-										Sel: ast.NewIdent("dB"),
+										Sel: ast.NewIdent("db"),
 									},
 									Sel: ast.NewIdent("DB"),
 								},
@@ -1388,6 +1412,21 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 								},
 							},
 							{
+								Names: []*ast.Ident{ast.NewIdent("Repository")},
+								Type: &ast.FuncType{
+									Params: &ast.FieldList{},
+									Results: &ast.FieldList{
+										List: []*ast.Field{
+											{
+												Type: &ast.SelectorExpr{
+													X: ast.NewIdent("repository"), Sel: ast.NewIdent("Registry"),
+												},
+											},
+										},
+									},
+								},
+							},
+							{
 								Names: []*ast.Ident{ast.NewIdent("Redis")},
 								Type: &ast.FuncType{
 									Params: &ast.FieldList{},
@@ -1496,12 +1535,19 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 			Type:  &ast.StarExpr{X: ast.NewIdent("Logger")},
 		},
 		{
-			Names: []*ast.Ident{ast.NewIdent("dB")},
+			Names: []*ast.Ident{ast.NewIdent("db")},
 			Type: &ast.StarExpr{
 				X: &ast.SelectorExpr{
 					X:   ast.NewIdent("gorm"),
 					Sel: ast.NewIdent("DB"),
 				},
+			},
+		},
+		{
+			Names: []*ast.Ident{ast.NewIdent("repo")},
+			Type: &ast.SelectorExpr{
+				X:   ast.NewIdent("repository"),
+				Sel: ast.NewIdent("Registry"),
 			},
 		},
 	}
@@ -1534,6 +1580,7 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 			},
 		)
 	}
+
 	decls = append(decls, &ast.GenDecl{
 		Tok: token.TYPE,
 		Doc: &ast.CommentGroup{

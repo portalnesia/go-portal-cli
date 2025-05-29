@@ -1,0 +1,55 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package repository
+
+import (
+	"context"
+	"gorm.io/gorm"
+	context2 "APP_NAME/internal/context"
+)
+
+type BaseRepository interface {
+	StartTransaction(c *context2.Context, fc func() error) error
+}
+
+type base struct {
+	db *gorm.DB
+}
+
+func (r base) StartTransaction(c *context2.Context, fc func() error) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// save transaction to context
+		ctx := context.WithValue(c.Context(), "db", tx)
+		c.Context(ctx)
+		errTx := fc()
+		if errTx != nil {
+			return errTx
+		}
+		return nil
+	})
+}
+
+func (r base) getDatabase(ctx *context2.Context, opts ...Options) *gorm.DB {
+	var getDB = func() *gorm.DB {
+		dbAny := ctx.Context().Value("db")
+		if dbAny != nil {
+			dbGorm, ok := dbAny.(*gorm.DB)
+			if ok {
+				return dbGorm
+			}
+		}
+
+		return r.db
+	}
+
+	db := getDB()
+	for _, opt := range opts {
+		db = opt(db)
+	}
+	return db
+}

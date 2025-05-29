@@ -21,7 +21,11 @@ func (a *app) IsProduction() bool {
 }
 
 func (a *app) DB() *gorm.DB {
-	return a.dB
+	return a.db
+}
+
+func (a *app) Repository() repository.Registry {
+	return a.repo
 }
 
 func (a *app) Crypto() pncrypto.Crypto {
