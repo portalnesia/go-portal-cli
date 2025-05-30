@@ -10,18 +10,21 @@ package repository
 import (
 	"context"
 	"gorm.io/gorm"
-	context2 "APP_NAME/internal/context"
 )
 
+type ContextInterface interface {
+	Context(c ...context.Context) context.Context
+}
+
 type BaseRepository interface {
-	StartTransaction(c *context2.Context, fc func() error) error
+	StartTransaction(c ContextInterface, fc func() error) error
 }
 
 type base struct {
 	db *gorm.DB
 }
 
-func (r base) StartTransaction(c *context2.Context, fc func() error) error {
+func (r base) StartTransaction(c ContextInterface, fc func() error) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		// save transaction to context
 		ctx := context.WithValue(c.Context(), "db", tx)
@@ -34,7 +37,7 @@ func (r base) StartTransaction(c *context2.Context, fc func() error) error {
 	})
 }
 
-func (r base) getDatabase(ctx *context2.Context, opts ...Options) *gorm.DB {
+func (r base) getDatabase(ctx ContextInterface, opts ...Options) *gorm.DB {
 	var getDB = func() *gorm.DB {
 		dbAny := ctx.Context().Value("db")
 		if dbAny != nil {
