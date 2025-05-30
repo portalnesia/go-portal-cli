@@ -37,6 +37,11 @@ var addRepositoryCmd = &cobra.Command{
 
 		if addRepositoryUseFlag {
 			cfg = addRepositoryConfig
+		} else {
+			if err := utils.PromptInitBool("Without model", &cfg.NoModel); err != nil {
+				_, _ = color.New(color.FgRed).Println("Error:", err)
+				return
+			}
 		}
 
 		if err = utils.PromptInitString("Name", &cfg.Name, !addEndpointUseFlag, false); err != nil {
@@ -71,5 +76,6 @@ func init() {
 	addRepositoryCmd.Flags().BoolVarP(&addRepositoryUseFlag, "flag", "f", false, "Use flag instead of prompt")
 
 	// prompt
-	addRepositoryCmd.Flags().StringVarP(&addRepositoryConfig.Name, "name", "n", "", "Method name; example: FollowUser")
+	addRepositoryCmd.Flags().StringVarP(&addRepositoryConfig.Name, "name", "n", "", "Repository name; example: user")
+	addRepositoryCmd.Flags().StringVar(&addRepositoryConfig.Name, "no-model", "", "If yes, create repository without creating model")
 }

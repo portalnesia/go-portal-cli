@@ -24,7 +24,10 @@ func AddRepository(app *config.App, cfg config2.AddRepositoryConfig) ([]config2.
 		cfg: cfg,
 	}
 
-	i := 3
+	i := 2
+	if !cfg.NoModel {
+		i += 1
+	}
 	var (
 		allFiles = make([]config2.Builder, 0)
 		respChan = make(chan config2.Builder, i)
@@ -34,7 +37,9 @@ func AddRepository(app *config.App, cfg config2.AddRepositoryConfig) ([]config2.
 
 	go c.addServiceRepository(wg, respChan)
 	go c.addToRepository(wg, respChan)
-	go c.addRepositoryModel(wg, respChan)
+	if !cfg.NoModel {
+		go c.addRepositoryModel(wg, respChan)
+	}
 
 	wg.Wait()
 	close(respChan)

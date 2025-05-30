@@ -35,8 +35,9 @@ type AddEndpointConfig struct {
 }
 
 type AddRepositoryConfig struct {
-	Module string
-	Name   string
+	Module  string
+	Name    string
+	NoModel bool
 }
 
 type Builder struct {
