@@ -22,7 +22,7 @@ func (s *addRepository) addRepositoryModel(wg *sync.WaitGroup, res chan<- config
 	defer wg.Done()
 
 	_, _ = color.New(color.FgBlue).Printf("Generating model\n")
-	serviceName := utils.Ucwords(s.cfg.Name)
+	serviceName := strings.ReplaceAll(utils.Ucwords(strings.ReplaceAll(s.cfg.Name, "_", " ")), " ", "")
 
 	decls := make([]ast.Decl, 0)
 
@@ -132,7 +132,7 @@ func (s *addRepository) addRepositoryModel(wg *sync.WaitGroup, res chan<- config
 		Recv: &ast.FieldList{
 			List: []*ast.Field{
 				{
-					Type: ast.NewIdent("User"),
+					Type: ast.NewIdent(serviceName),
 				},
 			},
 		},

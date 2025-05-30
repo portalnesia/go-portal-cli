@@ -23,8 +23,8 @@ import (
 func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 
-	serviceName := utils.Ucwords(s.cfg.Name)
-	lowerName := strings.ToLower(s.cfg.Name)
+	serviceName := strings.ReplaceAll(utils.Ucwords(strings.ReplaceAll(s.cfg.Name, "_", " ")), " ", "")
+	lowerName := strings.ReplaceAll(helper.FirstToLower(strings.ReplaceAll(s.cfg.Name, "_", " ")), " ", "")
 	structName := fmt.Sprintf("%sRepository", lowerName)
 
 	_, _ = color.New(color.FgBlue).Printf("Generating repository\n")
@@ -184,14 +184,14 @@ func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- conf
 
 	res <- config2.Builder{
 		File:     file,
-		Pathname: fmt.Sprintf("internal/repository/%s_repository.go", lowerName),
+		Pathname: fmt.Sprintf("internal/repository/%s_repository.go", strings.ToLower(s.cfg.Name)),
 	}
 }
 
 func (s *addRepository) addToRepository(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 
-	serviceName := utils.Ucwords(s.cfg.Name)
+	serviceName := strings.ReplaceAll(utils.Ucwords(strings.ReplaceAll(s.cfg.Name, "_", " ")), " ", "")
 
 	// Parse file routes
 	resp := config2.Builder{}

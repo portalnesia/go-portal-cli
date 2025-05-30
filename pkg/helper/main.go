@@ -48,3 +48,10 @@ func GetModuleName(goModPath string) (string, error) {
 
 	return "", fmt.Errorf("module name not found in %s", goModPath)
 }
+
+func FirstToLower(s string) string {
+	if len(s) == 0 {
+		return ""
+	}
+	return strings.ToLower(s[:1]) + s[1:]
+}
