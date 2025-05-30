@@ -34,6 +34,11 @@ type AddEndpointConfig struct {
 	Method      string // GET, POST, PUT, PATCH, DELETE
 }
 
+type AddRepositoryConfig struct {
+	Module string
+	Name   string
+}
+
 type Builder struct {
 	Comment  []string
 	File     *ast.File

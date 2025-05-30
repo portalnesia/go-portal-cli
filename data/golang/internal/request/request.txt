@@ -8,27 +8,50 @@
 package request
 
 import (
+	"fmt"
+	"github.com/samber/lo"
+	"gorm.io/gorm"
 	"APP_NAME/internal/context"
 	"strings"
 	"sync"
+	"time"
 )
 
+type RequestInterface interface {
+	SetTotal(t int64)
+	ListHelper(orderValue []string, defaultValue [][]string, table string) func(db *gorm.DB) *gorm.DB
+	GetPage() int
+	GetOrder() [][]string
+	SetCursorResponse(d string)
+}
+
 type Request struct {
-	Page      int              `query:"page"`
-	Total     int64            `query:"-"`
-	PageSize  int              `query:"page_size"`
-	Cursor    int64            `query:"cursor"`
-	Start     int              `query:"-"`
-	Q         string           `query:"q"`
-	ctx       *context.Context `query:"-"`
-	done      bool             `query:"-"`
-	Order     string           `query:"order"`
+	Page     int              `query:"page"`
+	Total    int64            `query:"-"`
+	PageSize int              `query:"page_size"`
+	Start    int              `query:"-"`
+	Q        string           `query:"q"`
+	ctx      *context.Context `query:"-"`
+	done     bool             `query:"-"`
+
+	Order          []string   `query:"order" json:"-" form:"-"` // array order.sort
+	OrderParsed    [][]string `query:"-" json:"-" form:"-"`     // [order,sort]
+	Cursor         MapQuery   `query:"cursor" json:"-" form:"-"`
+	CursorResponse string     `query:"-" json:"-" form:"-"`
 
 	mux sync.RWMutex
 }
 
-func (d *Request) GetCursor() int64 {
+func (d *Request) SetTotal(s int64) {
+	d.Total = s
+}
+
+func (d *Request) GetCursor() any {
 	return d.Cursor
+}
+
+func (d *Request) GetOrder() [][]string {
+	return d.OrderParsed
 }
 
 func (d *Request) GetPageSize() int {
@@ -55,6 +78,10 @@ func (d *Request) GetMethod() string {
 	return d.ctx.Method
 }
 
+func (d *Request) SetCursorResponse(s string) {
+	d.CursorResponse = s
+}
+
 func (d *Request) Init(ctx *context.Context) {
 	d.mux.Lock()
 	defer d.mux.Unlock()
@@ -64,9 +91,6 @@ func (d *Request) Init(ctx *context.Context) {
 	}
 
 	d.ctx = ctx
-	if d.Page == 0 {
-		d.Page = 1
-	}
 	if d.PageSize == 0 || d.PageSize > 50 {
 		d.PageSize = 15
 	}
@@ -77,9 +101,116 @@ func (d *Request) Init(ctx *context.Context) {
 
 	start := 0
 	if d.Page > 1 {
-		start = int(d.Page)*d.PageSize - d.PageSize
+		start = d.Page*d.PageSize - d.PageSize
 	}
 	d.Start = start
 
+	if d.Order != nil && len(d.Order) > 0 {
+		d.OrderParsed = make([][]string, 0)
+		for _, v := range d.Order {
+			split := strings.Split(v, ".")
+			column := split[0]
+			sort := "desc"
+			if len(split) > 1 {
+				sort = split[1]
+			}
+			d.OrderParsed = append(d.OrderParsed, []string{
+				column,
+				sort,
+			})
+		}
+	}
+
+	if d.Cursor != nil {
+		parsed := make(map[string]interface{}, len(d.Cursor))
+		for col, raw := range d.Cursor {
+			if raw == nil {
+				continue
+			}
+			switch v := raw.(type) {
+			case string:
+				// coba parse RFC3339, kalau gagal pakai string
+				if t, err := time.Parse(time.RFC3339, v); err == nil {
+					parsed[col] = t
+				} else {
+					parsed[col] = v
+				}
+			default:
+				parsed[col] = v
+			}
+		}
+		d.Cursor = parsed
+	}
+
 	d.done = true
+}
+
+// ListHelper
+//
+// orderValue: array of columns that can be ordered
+// defaultValue: map[order]sort. example: {"user_login":"desc"}
+func (d *Request) ListHelper(orderValue []string, defaultValue [][]string, table string) func(db *gorm.DB) *gorm.DB {
+	query := make([]string, 0)
+	mapOrder := make([][]string, 0) // column => sort
+	if d.OrderParsed != nil {
+		for _, order := range d.OrderParsed {
+			k, v := order[0], order[1]
+			if lo.Contains(orderValue, k) {
+				query = append(query, fmt.Sprintf("%s.%s %s", table, k, v))
+			}
+		}
+		mapOrder = d.OrderParsed
+	}
+	if len(query) == 0 {
+		for _, order := range defaultValue {
+			k, v := order[0], order[1]
+			query = append(query, fmt.Sprintf("%s.%s %s", table, k, v))
+		}
+		mapOrder = defaultValue
+		d.OrderParsed = defaultValue
+	}
+
+	return func(db *gorm.DB) *gorm.DB {
+		db = db.Order(strings.Join(query, ", "))
+
+		if d.Page > 0 {
+			db = db.Offset(d.Start)
+		} else if d.Cursor != nil {
+			db = db.Offset(0)
+			where := make([]string, 0)
+			value := make([]any, 0)
+
+			for i := range mapOrder {
+				var parts []string
+				var args []interface{}
+
+				// untuk j < i: col_j = v_j
+				for j := 0; j < i; j++ {
+					colJ := mapOrder[j][0]
+					parts = append(parts, fmt.Sprintf("%s = ?", colJ))
+					args = append(args, d.Cursor[colJ])
+				}
+
+				// untuk i: col_i >/< v_i
+				colI := mapOrder[i][0]
+				dir := strings.ToLower(mapOrder[i][1])
+				op := "<"
+				if dir == "asc" {
+					op = ">"
+				}
+				parts = append(parts, fmt.Sprintf("%s %s ?", colI, op))
+				args = append(args, d.Cursor[colI])
+
+				clause := strings.Join(parts, " AND ")
+				where = append(where, clause)
+				value = append(value, args...)
+			}
+
+			if len(where) > 0 {
+				db = db.Where(strings.Join(where, " OR "), value...)
+			}
+		}
+
+		return db.Limit(d.PageSize)
+	}
 }

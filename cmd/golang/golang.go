@@ -22,5 +22,6 @@ func Init() *cobra.Command {
 	golangCmd.AddCommand(initCmd)
 	golangCmd.AddCommand(addServiceCmd)
 	golangCmd.AddCommand(addEndpointCmd)
+	golangCmd.AddCommand(addRepositoryCmd)
 	return golangCmd
 }

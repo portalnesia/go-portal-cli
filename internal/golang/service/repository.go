@@ -20,16 +20,16 @@ import (
 	"sync"
 )
 
-func (s *addService) addServiceRepository(wg *sync.WaitGroup, res chan<- config2.Builder) {
+func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 
 	serviceName := utils.Ucwords(s.cfg.Name)
-	structName := fmt.Sprintf("%sRepository", strings.ToLower(s.cfg.Name))
+	lowerName := strings.ToLower(s.cfg.Name)
+	structName := fmt.Sprintf("%sRepository", lowerName)
 
 	_, _ = color.New(color.FgBlue).Printf("Generating repository\n")
 	pkgImport := []string{
-		`"errors"`,
-		fmt.Sprintf(`"%s/internal/context"`, s.cfg.Module),
+		fmt.Sprintf(`"%s/internal/model"`, s.cfg.Module),
 		fmt.Sprintf(`"%s/internal/request"`, s.cfg.Module),
 	}
 
@@ -50,40 +50,19 @@ func (s *addService) addServiceRepository(wg *sync.WaitGroup, res chan<- config2
 					Methods: &ast.FieldList{
 						List: []*ast.Field{
 							{
-								Names: []*ast.Ident{ast.NewIdent("List")},
-								Type: &ast.FuncType{
-									Params: &ast.FieldList{
-										List: []*ast.Field{
-											{
-												Names: []*ast.Ident{ast.NewIdent("ctx")},
-												Type: &ast.StarExpr{
-													X: &ast.SelectorExpr{
-														X:   ast.NewIdent("context"),
-														Sel: ast.NewIdent("Context"),
-													},
-												},
-											},
-											{
-												Names: []*ast.Ident{ast.NewIdent("query")},
-												Type: &ast.StarExpr{
-													X: &ast.SelectorExpr{
-														X:   ast.NewIdent("request"),
-														Sel: ast.NewIdent("Request"),
-													},
-												},
-											},
-											{
-												Names: []*ast.Ident{ast.NewIdent("options")},
-												Type: &ast.Ellipsis{
-													Elt: ast.NewIdent("Options"),
-												},
-											},
+								Type: &ast.IndexListExpr{
+									X: &ast.Ident{Name: "CrudRepository"},
+									Indices: []ast.Expr{
+										&ast.SelectorExpr{
+											X:   ast.NewIdent("model"),
+											Sel: ast.NewIdent(serviceName),
 										},
-									},
-									Results: &ast.FieldList{
-										List: []*ast.Field{
-											{Type: ast.NewIdent("any")},
-											{Type: ast.NewIdent("error")},
+										ast.NewIdent("string"),
+										&ast.StarExpr{
+											X: &ast.SelectorExpr{
+												X:   ast.NewIdent("request"),
+												Sel: ast.NewIdent("Request"),
+											},
 										},
 									},
 								},
@@ -110,8 +89,22 @@ func (s *addService) addServiceRepository(wg *sync.WaitGroup, res chan<- config2
 					Fields: &ast.FieldList{
 						List: []*ast.Field{
 							{
-								// Embedded field: hanya Type, tanpa Names
-								Type: ast.NewIdent("base"),
+								Type: &ast.IndexListExpr{
+									X: ast.NewIdent("crudRepository"),
+									Indices: []ast.Expr{
+										&ast.SelectorExpr{
+											X:   ast.NewIdent("model"),
+											Sel: ast.NewIdent(serviceName),
+										},
+										ast.NewIdent("string"),
+										&ast.StarExpr{
+											X: &ast.SelectorExpr{
+												X:   ast.NewIdent("request"),
+												Sel: ast.NewIdent("Request"),
+											},
+										},
+									},
+								},
 							},
 						},
 					},
@@ -121,7 +114,65 @@ func (s *addService) addServiceRepository(wg *sync.WaitGroup, res chan<- config2
 	})
 
 	// implemented List
-	decls = append(decls, addImplementation(structName, fmt.Sprintf("List%s", serviceName)))
+	decls = append(decls, &ast.FuncDecl{
+		Name: ast.NewIdent(fmt.Sprintf("new%sRepository", serviceName)),
+		Doc: &ast.CommentGroup{
+			List: []*ast.Comment{
+				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
+			},
+		},
+		Type: &ast.FuncType{
+			Params: &ast.FieldList{
+				List: []*ast.Field{
+					{
+						Names: []*ast.Ident{ast.NewIdent("bs")},
+						Type:  ast.NewIdent("base"),
+					},
+				},
+			},
+			Results: &ast.FieldList{
+				List: []*ast.Field{
+					{
+						Type: ast.NewIdent(fmt.Sprintf("%sRepository", serviceName)),
+					},
+				},
+			},
+		},
+		Body: &ast.BlockStmt{
+			List: []ast.Stmt{
+				&ast.ReturnStmt{
+					Results: []ast.Expr{
+						&ast.CompositeLit{
+							Type: ast.NewIdent(structName),
+							Elts: []ast.Expr{
+								&ast.CompositeLit{
+									Type: &ast.IndexListExpr{
+										X: ast.NewIdent("crudRepository"),
+										Indices: []ast.Expr{
+											&ast.SelectorExpr{
+												X:   ast.NewIdent("model"),
+												Sel: ast.NewIdent(serviceName),
+											},
+											ast.NewIdent("string"),
+											&ast.StarExpr{
+												X: &ast.SelectorExpr{
+													X:   ast.NewIdent("request"),
+													Sel: ast.NewIdent("Request"),
+												},
+											},
+										},
+									},
+									Elts: []ast.Expr{
+										ast.NewIdent("bs"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
 
 	imports := helper.GenImport(pkgImport...)
 	decls = append([]ast.Decl{imports.GenDecl()}, decls...)
@@ -133,94 +184,11 @@ func (s *addService) addServiceRepository(wg *sync.WaitGroup, res chan<- config2
 
 	res <- config2.Builder{
 		File:     file,
-		Pathname: fmt.Sprintf("internal/repository/%s_repository.go", strings.ToLower(s.cfg.Name)),
+		Pathname: fmt.Sprintf("internal/repository/%s_repository.go", lowerName),
 	}
 }
 
-func addImplementation(structName, fnName string) ast.Decl {
-	return &ast.FuncDecl{
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Recv: &ast.FieldList{
-			List: []*ast.Field{
-				{
-					Names: []*ast.Ident{ast.NewIdent("r")},
-					Type:  ast.NewIdent(structName),
-				},
-			},
-		},
-		Name: ast.NewIdent("List"),
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{
-				List: []*ast.Field{
-					{
-						Names: []*ast.Ident{ast.NewIdent("ctx")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("context"),
-								Sel: ast.NewIdent("Context"),
-							},
-						},
-					},
-					{
-						Names: []*ast.Ident{ast.NewIdent("query")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("request"),
-								Sel: ast.NewIdent("Request"),
-							},
-						},
-					},
-					{
-						Names: []*ast.Ident{ast.NewIdent("options")},
-						Type: &ast.Ellipsis{
-							Elt: ast.NewIdent("Options"),
-						},
-					},
-				},
-			},
-			Results: &ast.FieldList{
-				List: []*ast.Field{
-					{Type: ast.NewIdent("any")},
-					{Type: ast.NewIdent("error")},
-				},
-			},
-		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ExprStmt{
-					X: &ast.BasicLit{
-						Kind:  token.STRING,
-						Value: `// db := r.getDatabase(ctx, options...)`,
-					},
-				},
-				helper.BodyListNewLines(),
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						ast.NewIdent("nil"),
-						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent("errors"),
-								Sel: ast.NewIdent("New"),
-							},
-							Args: []ast.Expr{
-								&ast.BasicLit{
-									Kind:  token.STRING,
-									Value: `"not implemented"`,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-}
-
-func (s *addService) addToRepository(wg *sync.WaitGroup, res chan<- config2.Builder) {
+func (s *addRepository) addToRepository(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 
 	serviceName := utils.Ucwords(s.cfg.Name)
@@ -261,11 +229,9 @@ func (s *addService) addToRepository(wg *sync.WaitGroup, res chan<- config2.Buil
 						if compositLit, okCompositLit := returnStmt.Results[0].(*ast.CompositeLit); okCompositLit {
 							compositLit.Elts = append(compositLit.Elts, &ast.KeyValueExpr{
 								Key: ast.NewIdent(serviceName),
-								Value: &ast.CompositeLit{
-									Type: ast.NewIdent(fmt.Sprintf("%sRepository", s.cfg.Name)),
-									Elts: []ast.Expr{
-										ast.NewIdent("bs"),
-									},
+								Value: &ast.CallExpr{
+									Fun:  ast.NewIdent(fmt.Sprintf("new%sRepository", serviceName)),
+									Args: []ast.Expr{ast.NewIdent("bs")},
 								},
 							})
 						}

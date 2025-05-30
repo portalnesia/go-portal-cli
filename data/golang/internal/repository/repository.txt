@@ -13,13 +13,11 @@ import (
 
 type Registry struct {
 	Base BaseRepository
-	User UserRepository
 }
 
 func NewRepository(db *gorm.DB) Registry {
 	bs := base{db}
 	return Registry{
 		Base: bs,
-		User: userRepository{bs},
 	}
 }

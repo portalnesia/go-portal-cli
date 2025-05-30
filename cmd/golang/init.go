@@ -14,6 +14,7 @@ import (
 	"go.portalnesia.com/portal-cli/internal/config"
 	bgolang "go.portalnesia.com/portal-cli/internal/golang"
 	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
+	"go.portalnesia.com/portal-cli/pkg/helper"
 )
 
 var (
@@ -27,12 +28,11 @@ var initCmd = &cobra.Command{
 	Short: "Init structure directory",
 	Long:  `Golang helper for init structure directory`,
 	Run: func(cmd *cobra.Command, args []string) {
-		var cfg config2.InitConfig
+		var (
+			cfg config2.InitConfig
+			err error
+		)
 
-		if err := utils.PromptInitString("Module name", &initConfig.Module, true); err != nil {
-			_, _ = color.New(color.FgRed).Println("Error:", err)
-			return
-		}
 		if initUseFlag || initWithAll {
 			cfg = initConfig
 			if initWithAll {
@@ -64,6 +64,12 @@ var initCmd = &cobra.Command{
 			panic("invalid app")
 		}
 
+		cfg.Module, err = helper.GetModuleName(app.Dir("go.mod"))
+		if err != nil {
+			_, _ = color.New(color.FgRed).Println("Error:", err)
+			return
+		}
+
 		golang := bgolang.New(app)
 		if err := golang.Init(cfg); err != nil {
 			_, _ = color.New(color.FgRed).Println("Error:", err)
@@ -76,7 +82,6 @@ func init() {
 	initCmd.Flags().BoolVarP(&initUseFlag, "flag", "f", false, "Use flag instead of prompt")
 
 	// prompt
-	initCmd.Flags().StringVar(&initConfig.Module, "module", "", "Module name")
 	initCmd.Flags().BoolVar(&initConfig.Redis, "redis", false, "Add redis")
 	initCmd.Flags().BoolVar(&initConfig.Firebase, "firebase", false, "Add firebase")
 	initCmd.Flags().BoolVar(&initConfig.Handlebars, "handlebars", false, "Add handlebars")

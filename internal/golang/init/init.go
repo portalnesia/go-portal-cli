@@ -26,7 +26,7 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 		cfg: cfg,
 	}
 
-	i := 33
+	i := 34
 	if cfg.Redis {
 		i += 1
 	}
@@ -63,8 +63,8 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 
 	files := []string{
 		"internal/repository/base",
+		"internal/repository/crud",
 		"internal/repository/options",
-		"internal/repository/user",
 		"internal/repository/repository",
 		"internal/config/getter",
 		"internal/rest/routes/routes",
@@ -78,6 +78,7 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 		"internal/cerror/parameter",
 		"internal/context/context",
 		"internal/request/request",
+		"internal/request/map_query",
 		"pkg/helper/main",
 		"pkg/migration/migration",
 		"pkg/validator/validator",

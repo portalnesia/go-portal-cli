@@ -13,18 +13,18 @@ import (
 	"sync"
 )
 
-type addService struct {
+type addRepository struct {
 	app *config.App
-	cfg config2.AddServiceConfig
+	cfg config2.AddRepositoryConfig
 }
 
-func AddService(app *config.App, cfg config2.AddServiceConfig) ([]config2.Builder, error) {
-	c := &addService{
+func AddRepository(app *config.App, cfg config2.AddRepositoryConfig) ([]config2.Builder, error) {
+	c := &addRepository{
 		app: app,
 		cfg: cfg,
 	}
 
-	i := 4
+	i := 3
 	var (
 		allFiles = make([]config2.Builder, 0)
 		respChan = make(chan config2.Builder, i)
@@ -32,12 +32,9 @@ func AddService(app *config.App, cfg config2.AddServiceConfig) ([]config2.Builde
 	)
 	wg.Add(i)
 
-	go c.addServiceHandler(wg, respChan)
-	go c.addServiceUsecase(wg, respChan)
-	go c.addServiceRoutes(wg, respChan)
-	//go c.addServiceRepository(wg, respChan)
-	go c.addToRoutes(wg, respChan)
-	//go c.addToRepository(wg, respChan)
+	go c.addServiceRepository(wg, respChan)
+	go c.addToRepository(wg, respChan)
+	go c.addRepositoryModel(wg, respChan)
 
 	wg.Wait()
 	close(respChan)

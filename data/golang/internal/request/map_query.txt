@@ -1,0 +1,118 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package request
+
+import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"github.com/goccy/go-json"
+	"github.com/spf13/viper"
+	"reflect"
+	"strings"
+)
+
+type MapQuery map[string]any
+
+func VerifyMapQuery(encoded string) (MapQuery, error) {
+	parts := strings.Split(encoded, ".")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid cursor format")
+	}
+
+	base64Cursor := parts[0]
+	receivedSig := parts[1]
+
+	h := hmac.New(sha256.New, []byte(viper.GetString("secret.crypto")))
+	h.Write([]byte(base64Cursor))
+	expectedSig := hex.EncodeToString(h.Sum(nil))
+
+	if !hmac.Equal([]byte(receivedSig), []byte(expectedSig)) {
+		return nil, fmt.Errorf("invalid cursor signature")
+	}
+
+	jsonBytes, err := base64.URLEncoding.DecodeString(base64Cursor)
+	if err != nil {
+		return nil, fmt.Errorf("base64 decode failed: %w", err)
+	}
+
+	var cursor MapQuery
+	if err = json.Unmarshal(jsonBytes, &cursor); err != nil {
+		return nil, fmt.Errorf("json unmarshal failed: %w", err)
+	}
+
+	return cursor, nil
+}
+
+// parseGormTag memecah tag gorm misal "column:foo;type:bar" → map["column":"foo",...]
+func parseGormTag(tag string) map[string]string {
+	out := make(map[string]string)
+	for _, part := range strings.Split(tag, ";") {
+		if kv := strings.SplitN(part, ":", 2); len(kv) == 2 {
+			out[kv[0]] = kv[1]
+		}
+	}
+	return out
+}
+
+func signCursor(data map[string]any) (string, error) {
+	// 1. Marshal map jadi JSON bytes
+	jsonBytes, err := json.Marshal(data)
+	if err != nil {
+		return "", fmt.Errorf("json marshal failed: %w", err)
+	}
+
+	// 2. Encode JSON bytes ke Base64 (URL safe)
+	base64Cursor := base64.URLEncoding.EncodeToString(jsonBytes)
+
+	// 3. Generate HMAC SHA256 signature
+	h := hmac.New(sha256.New, []byte(viper.GetString("secret.crypto")))
+	h.Write([]byte(base64Cursor))
+	signature := hex.EncodeToString(h.Sum(nil))
+
+	// 4. Gabungkan base64 + tanda titik + signature
+	signedCursor := fmt.Sprintf("%s.%s", base64Cursor, signature)
+	return signedCursor, nil
+}
+
+// ExtractValuesByColumns mengambil field value berdasarkan kolom yang didefinisikan di map[column]sort
+func ExtractValuesByColumns(s interface{}, sorting [][]string) (string, error) {
+	sv := reflect.ValueOf(s)
+	if sv.Kind() != reflect.Ptr || sv.IsNil() {
+		return "", errors.New("s harus pointer ke struct")
+	}
+	sv = sv.Elem()
+	if sv.Kind() != reflect.Struct {
+		return "", errors.New("s harus pointer ke struct")
+	}
+
+	st := sv.Type()
+	result := make(map[string]interface{})
+
+	for i := 0; i < st.NumField(); i++ {
+		field := st.Field(i)
+		gormTag := parseGormTag(field.Tag.Get("gorm"))
+		colName, ok := gormTag["column"]
+		if !ok {
+			continue
+		}
+
+		// ✅ Ubah di sini: cek apakah colName ada di columns[][0]
+		for _, pair := range sorting {
+			if len(pair) > 0 && pair[0] == colName {
+				result[colName] = sv.Field(i).Interface()
+				break
+			}
+		}
+	}
+
+	return signCursor(result)
+}

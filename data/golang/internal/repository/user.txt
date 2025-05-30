@@ -8,21 +8,20 @@
 package repository
 
 import (
-    "errors"
-    "APP_NAME/internal/context"
-    "APP_NAME/internal/request"
+	"APP_NAME/internal/model"
+	"APP_NAME/internal/request"
 )
 
 type UserRepository interface {
-    ListUser(ctx *context.Context, query *request.Request, options ...Options) (any, error)
+	CrudRepository[model.User, string, *request.Request]
 }
 
 type userRepository struct {
-	base
+	crudRepository[model.User, string, *request.Request]
 }
 
-func (r userRepository) ListUser(ctx *context.Context, query *request.Request, options ...Options) (any, error) {
-    // db := r.getDatabase(ctx, options...)
-
-    return nil, errors.New("not implemented")
+func newUserRepository(bs base) UserRepository {
+	return userRepository{
+		crudRepository[model.User, string, *request.Request]{bs},
+	}
 }
