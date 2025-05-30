@@ -127,7 +127,7 @@ func (s *addRepository) addRepositoryModel(wg *sync.WaitGroup, res chan<- config
 		},
 	})
 
-	// func (User) GetAvailableOrder() [][]string { return [][]string{{"user_login", "desc"}} }
+	// func (User) GetAvailableOrder() [][]string { return [][]string{{"created_at", "desc"}} }
 	decls = append(decls, &ast.FuncDecl{
 		Recv: &ast.FieldList{
 			List: []*ast.Field{
@@ -169,7 +169,7 @@ func (s *addRepository) addRepositoryModel(wg *sync.WaitGroup, res chan<- config
 							Elts: []ast.Expr{
 								&ast.CompositeLit{
 									Elts: []ast.Expr{
-										&ast.BasicLit{Kind: token.STRING, Value: `"user_login"`},
+										&ast.BasicLit{Kind: token.STRING, Value: `"created_at"`},
 										&ast.BasicLit{Kind: token.STRING, Value: `"desc"`},
 									},
 								},

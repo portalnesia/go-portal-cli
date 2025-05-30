@@ -77,5 +77,5 @@ func init() {
 
 	// prompt
 	addRepositoryCmd.Flags().StringVarP(&addRepositoryConfig.Name, "name", "n", "", "Repository name; example: user")
-	addRepositoryCmd.Flags().StringVar(&addRepositoryConfig.Name, "no-model", "", "If yes, create repository without creating model")
+	addRepositoryCmd.Flags().BoolVar(&addRepositoryConfig.NoModel, "no-model", false, "If yes, create repository without creating model")
 }
