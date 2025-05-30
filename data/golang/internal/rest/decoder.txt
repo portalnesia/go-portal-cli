@@ -5,10 +5,11 @@
  * Written by Putu Aditya <aditya@portalnesia.com>
  */
 
-package server
+package rest
 
 import (
 	nullable2 "go.portalnesia.com/nullable"
+	"APP_NAME/internal/request"
 	"APP_NAME/pkg/helper"
 	"reflect"
 	"strconv"
@@ -41,6 +42,11 @@ func registerDecoder() []fiber.ParserType {
 		Converter:  intConverter,
 	}
 
+	mapQuery := fiber.ParserType{
+		Customtype: request.MapQuery{},
+		Converter:  cursorConverter,
+	}
+
 	return []fiber.ParserType{
 		nullBool,
 		nullTime,
@@ -48,6 +54,7 @@ func registerDecoder() []fiber.ParserType {
 		nullFloat,
 		nullInt,
 		nullInt,
+		mapQuery,
 	}
 }
 
@@ -91,4 +98,13 @@ var intConverter = func(value string) reflect.Value {
 	}
 	a := nullable2.NewInt(i, true, true)
 	return reflect.ValueOf(a)
+}
+
+var cursorConverter = func(value string) reflect.Value {
+	cursor, err := request.VerifyMapQuery(value)
+	if err != nil {
+		//fmt.Println("cursor invalid:", err)        // opsional logging
+		return reflect.ValueOf(request.MapQuery{}) // return empty map
+	}
+	return reflect.ValueOf(cursor)
 }
