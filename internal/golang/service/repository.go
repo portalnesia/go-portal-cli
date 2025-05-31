@@ -9,11 +9,12 @@ package service
 
 import (
 	"fmt"
+	"github.com/dave/dst"
+	"github.com/dave/dst/decorator"
 	"github.com/fatih/color"
 	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
 	"go.portalnesia.com/portal-cli/pkg/helper"
 	"go.portalnesia.com/utils"
-	"go/ast"
 	"go/parser"
 	"go/token"
 	"strings"
@@ -33,35 +34,30 @@ func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- conf
 		fmt.Sprintf(`"%s/internal/request"`, s.cfg.Module),
 	}
 
-	decls := make([]ast.Decl, 0)
+	decls := make([]dst.Decl, 0)
 
 	// interface
-	decls = append(decls, &ast.GenDecl{
+	decls = append(decls, &dst.GenDecl{
 		Tok: token.TYPE,
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Specs: []ast.Spec{
-			&ast.TypeSpec{
-				Name: ast.NewIdent(fmt.Sprintf("%sRepository", serviceName)),
-				Type: &ast.InterfaceType{
-					Methods: &ast.FieldList{
-						List: []*ast.Field{
+		Specs: []dst.Spec{
+			&dst.TypeSpec{
+				Name: dst.NewIdent(fmt.Sprintf("%sRepository", serviceName)),
+				Type: &dst.InterfaceType{
+					Methods: &dst.FieldList{
+						List: []*dst.Field{
 							{
-								Type: &ast.IndexListExpr{
-									X: &ast.Ident{Name: "CrudRepository"},
-									Indices: []ast.Expr{
-										&ast.SelectorExpr{
-											X:   ast.NewIdent("model"),
-											Sel: ast.NewIdent(serviceName),
+								Type: &dst.IndexListExpr{
+									X: &dst.Ident{Name: "CrudRepository"},
+									Indices: []dst.Expr{
+										&dst.SelectorExpr{
+											X:   dst.NewIdent("model"),
+											Sel: dst.NewIdent(serviceName),
 										},
-										ast.NewIdent("string"),
-										&ast.StarExpr{
-											X: &ast.SelectorExpr{
-												X:   ast.NewIdent("request"),
-												Sel: ast.NewIdent("Request"),
+										dst.NewIdent("string"),
+										&dst.StarExpr{
+											X: &dst.SelectorExpr{
+												X:   dst.NewIdent("request"),
+												Sel: dst.NewIdent("Request"),
 											},
 										},
 									},
@@ -75,32 +71,27 @@ func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- conf
 	})
 
 	// type struct
-	decls = append(decls, &ast.GenDecl{
+	decls = append(decls, &dst.GenDecl{
 		Tok: token.TYPE,
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Specs: []ast.Spec{
-			&ast.TypeSpec{
-				Name: ast.NewIdent(structName),
-				Type: &ast.StructType{
-					Fields: &ast.FieldList{
-						List: []*ast.Field{
+		Specs: []dst.Spec{
+			&dst.TypeSpec{
+				Name: dst.NewIdent(structName),
+				Type: &dst.StructType{
+					Fields: &dst.FieldList{
+						List: []*dst.Field{
 							{
-								Type: &ast.IndexListExpr{
-									X: ast.NewIdent("crudRepository"),
-									Indices: []ast.Expr{
-										&ast.SelectorExpr{
-											X:   ast.NewIdent("model"),
-											Sel: ast.NewIdent(serviceName),
+								Type: &dst.IndexListExpr{
+									X: dst.NewIdent("crudRepository"),
+									Indices: []dst.Expr{
+										&dst.SelectorExpr{
+											X:   dst.NewIdent("model"),
+											Sel: dst.NewIdent(serviceName),
 										},
-										ast.NewIdent("string"),
-										&ast.StarExpr{
-											X: &ast.SelectorExpr{
-												X:   ast.NewIdent("request"),
-												Sel: ast.NewIdent("Request"),
+										dst.NewIdent("string"),
+										&dst.StarExpr{
+											X: &dst.SelectorExpr{
+												X:   dst.NewIdent("request"),
+												Sel: dst.NewIdent("Request"),
 											},
 										},
 									},
@@ -114,56 +105,51 @@ func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- conf
 	})
 
 	// implemented List
-	decls = append(decls, &ast.FuncDecl{
-		Name: ast.NewIdent(fmt.Sprintf("new%sRepository", serviceName)),
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{
-				List: []*ast.Field{
+	decls = append(decls, &dst.FuncDecl{
+		Name: dst.NewIdent(fmt.Sprintf("new%sRepository", serviceName)),
+		Type: &dst.FuncType{
+			Params: &dst.FieldList{
+				List: []*dst.Field{
 					{
-						Names: []*ast.Ident{ast.NewIdent("bs")},
-						Type:  ast.NewIdent("base"),
+						Names: []*dst.Ident{dst.NewIdent("bs")},
+						Type:  dst.NewIdent("base"),
 					},
 				},
 			},
-			Results: &ast.FieldList{
-				List: []*ast.Field{
+			Results: &dst.FieldList{
+				List: []*dst.Field{
 					{
-						Type: ast.NewIdent(fmt.Sprintf("%sRepository", serviceName)),
+						Type: dst.NewIdent(fmt.Sprintf("%sRepository", serviceName)),
 					},
 				},
 			},
 		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						&ast.CompositeLit{
-							Type: ast.NewIdent(structName),
-							Elts: []ast.Expr{
-								&ast.CompositeLit{
-									Type: &ast.IndexListExpr{
-										X: ast.NewIdent("crudRepository"),
-										Indices: []ast.Expr{
-											&ast.SelectorExpr{
-												X:   ast.NewIdent("model"),
-												Sel: ast.NewIdent(serviceName),
+		Body: &dst.BlockStmt{
+			List: []dst.Stmt{
+				&dst.ReturnStmt{
+					Results: []dst.Expr{
+						&dst.CompositeLit{
+							Type: dst.NewIdent(structName),
+							Elts: []dst.Expr{
+								&dst.CompositeLit{
+									Type: &dst.IndexListExpr{
+										X: dst.NewIdent("crudRepository"),
+										Indices: []dst.Expr{
+											&dst.SelectorExpr{
+												X:   dst.NewIdent("model"),
+												Sel: dst.NewIdent(serviceName),
 											},
-											ast.NewIdent("string"),
-											&ast.StarExpr{
-												X: &ast.SelectorExpr{
-													X:   ast.NewIdent("request"),
-													Sel: ast.NewIdent("Request"),
+											dst.NewIdent("string"),
+											&dst.StarExpr{
+												X: &dst.SelectorExpr{
+													X:   dst.NewIdent("request"),
+													Sel: dst.NewIdent("Request"),
 												},
 											},
 										},
 									},
-									Elts: []ast.Expr{
-										ast.NewIdent("bs"),
+									Elts: []dst.Expr{
+										dst.NewIdent("bs"),
 									},
 								},
 							},
@@ -175,15 +161,18 @@ func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- conf
 	})
 
 	imports := helper.GenImport(pkgImport...)
-	decls = append([]ast.Decl{imports.GenDecl()}, decls...)
-	file := &ast.File{
-		Name:    ast.NewIdent("repository"),
-		Imports: imports.ImportSpec(),
+	decls = append([]dst.Decl{imports.GenDeclDst()}, decls...)
+	for i := range decls {
+		decls[i].Decorations().Before = dst.EmptyLine
+	}
+	file := &dst.File{
+		Name:    dst.NewIdent("repository"),
+		Imports: imports.ImportSpecDst(),
 		Decls:   decls,
 	}
 
 	res <- config2.Builder{
-		File:     file,
+		DstFile:  file,
 		Pathname: fmt.Sprintf("internal/repository/%s_repository.go", strings.ToLower(s.cfg.Name)),
 	}
 }
@@ -200,7 +189,7 @@ func (s *addRepository) addToRepository(wg *sync.WaitGroup, res chan<- config2.B
 	}()
 
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, s.app.Dir("internal/repository/repository.go"), nil, parser.AllErrors)
+	file, err := decorator.ParseFile(fset, s.app.Dir("internal/repository/repository.go"), nil, parser.AllErrors)
 	if err != nil {
 		resp.Err = err
 		return
@@ -208,30 +197,30 @@ func (s *addRepository) addToRepository(wg *sync.WaitGroup, res chan<- config2.B
 
 	for _, decl := range file.Decls {
 		// struct Registry
-		if interfaceDecl, okGenDecl := decl.(*ast.GenDecl); okGenDecl {
+		if interfaceDecl, okGenDecl := decl.(*dst.GenDecl); okGenDecl {
 			for specs, _ := range interfaceDecl.Specs {
-				if typeSpecs, okTypeSpec := interfaceDecl.Specs[specs].(*ast.TypeSpec); okTypeSpec {
-					structType, okStruct := typeSpecs.Type.(*ast.StructType)
+				if typeSpecs, okTypeSpec := interfaceDecl.Specs[specs].(*dst.TypeSpec); okTypeSpec {
+					structType, okStruct := typeSpecs.Type.(*dst.StructType)
 					if typeSpecs.Name.Name == "Registry" && okStruct {
-						structType.Fields.List = append(structType.Fields.List, &ast.Field{
-							Names: []*ast.Ident{ast.NewIdent(serviceName)},
-							Type:  ast.NewIdent(fmt.Sprintf("%sRepository", serviceName)),
+						structType.Fields.List = append(structType.Fields.List, &dst.Field{
+							Names: []*dst.Ident{dst.NewIdent(serviceName)},
+							Type:  dst.NewIdent(fmt.Sprintf("%sRepository", serviceName)),
 						})
 					}
 				}
 			}
 		}
 
-		if funcDecl, okFunc := decl.(*ast.FuncDecl); okFunc {
+		if funcDecl, okFunc := decl.(*dst.FuncDecl); okFunc {
 			if funcDecl.Name.Name == "NewRepository" {
 				for _, stmt := range funcDecl.Body.List {
-					if returnStmt, okStmt := stmt.(*ast.ReturnStmt); okStmt {
-						if compositLit, okCompositLit := returnStmt.Results[0].(*ast.CompositeLit); okCompositLit {
-							compositLit.Elts = append(compositLit.Elts, &ast.KeyValueExpr{
-								Key: ast.NewIdent(serviceName),
-								Value: &ast.CallExpr{
-									Fun:  ast.NewIdent(fmt.Sprintf("new%sRepository", serviceName)),
-									Args: []ast.Expr{ast.NewIdent("bs")},
+					if returnStmt, okStmt := stmt.(*dst.ReturnStmt); okStmt {
+						if compositLit, okCompositLit := returnStmt.Results[0].(*dst.CompositeLit); okCompositLit {
+							compositLit.Elts = append(compositLit.Elts, &dst.KeyValueExpr{
+								Key: dst.NewIdent(serviceName),
+								Value: &dst.CallExpr{
+									Fun:  dst.NewIdent(fmt.Sprintf("new%sRepository", serviceName)),
+									Args: []dst.Expr{dst.NewIdent("bs")},
 								},
 							})
 						}
@@ -241,6 +230,6 @@ func (s *addRepository) addToRepository(wg *sync.WaitGroup, res chan<- config2.B
 		}
 	}
 
-	resp.File = file
+	resp.DstFile = file
 	resp.Pathname = "internal/repository/repository.go"
 }

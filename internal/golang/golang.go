@@ -10,6 +10,7 @@ package b_golang
 import (
 	"bytes"
 	"fmt"
+	"github.com/dave/dst/decorator"
 	"go.portalnesia.com/portal-cli/internal/config"
 	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
 	"go.portalnesia.com/portal-cli/pkg/helper"
@@ -56,6 +57,17 @@ func (g *Golang) Build(builder []config2.Builder) error {
 			}
 
 			if err = printerConfig.Fprint(&buf, fset, b.File); err != nil {
+				return fmt.Errorf("failed to print file: %s", err.Error())
+			}
+			src, err = format.Source(buf.Bytes())
+			if err != nil {
+				return fmt.Errorf("failed to format source: %s", err.Error())
+			}
+		} else if b.DstFile != nil {
+			var buf bytes.Buffer
+			buf.WriteString(helper.GenCopyright(b.Comment...))
+
+			if err = decorator.Fprint(&buf, b.DstFile); err != nil {
 				return fmt.Errorf("failed to print file: %s", err.Error())
 			}
 			src, err = format.Source(buf.Bytes())

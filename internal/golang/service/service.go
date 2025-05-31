@@ -9,11 +9,12 @@ package service
 
 import (
 	"fmt"
+	"github.com/dave/dst"
+	"github.com/dave/dst/decorator"
 	"github.com/fatih/color"
 	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
 	"go.portalnesia.com/portal-cli/pkg/helper"
 	"go.portalnesia.com/utils"
-	"go/ast"
 	"go/parser"
 	"go/token"
 	"strings"
@@ -33,27 +34,22 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 		fmt.Sprintf(`"%s/internal/config"`, s.cfg.Module),
 		fmt.Sprintf(`"%s/internal/request"`, s.cfg.Module),
 	}
-	decls := make([]ast.Decl, 0)
+	decls := make([]dst.Decl, 0)
 
 	// type Test struct { app *config.App }
-	decls = append(decls, &ast.GenDecl{
+	decls = append(decls, &dst.GenDecl{
 		Tok: token.TYPE,
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Specs: []ast.Spec{
-			&ast.TypeSpec{
-				Name: ast.NewIdent(serviceName),
-				Type: &ast.StructType{
-					Fields: &ast.FieldList{
-						List: []*ast.Field{
+		Specs: []dst.Spec{
+			&dst.TypeSpec{
+				Name: dst.NewIdent(serviceName),
+				Type: &dst.StructType{
+					Fields: &dst.FieldList{
+						List: []*dst.Field{
 							{
-								Names: []*ast.Ident{ast.NewIdent("app")},
-								Type: &ast.SelectorExpr{
-									X:   ast.NewIdent("config"),
-									Sel: ast.NewIdent("App"),
+								Names: []*dst.Ident{dst.NewIdent("app")},
+								Type: &dst.SelectorExpr{
+									X:   dst.NewIdent("config"),
+									Sel: dst.NewIdent("App"),
 								},
 							},
 						},
@@ -64,40 +60,35 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 	})
 
 	// func NewTest(app *config.App) *Test { return &Test{app} }
-	decls = append(decls, &ast.FuncDecl{
-		Name: ast.NewIdent(fmt.Sprintf("New%s", serviceName)),
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{
-				List: []*ast.Field{
+	decls = append(decls, &dst.FuncDecl{
+		Name: dst.NewIdent(fmt.Sprintf("New%s", serviceName)),
+		Type: &dst.FuncType{
+			Params: &dst.FieldList{
+				List: []*dst.Field{
 					{
-						Names: []*ast.Ident{ast.NewIdent("app")},
-						Type: &ast.SelectorExpr{
-							X:   ast.NewIdent("config"),
-							Sel: ast.NewIdent("App"),
+						Names: []*dst.Ident{dst.NewIdent("app")},
+						Type: &dst.SelectorExpr{
+							X:   dst.NewIdent("config"),
+							Sel: dst.NewIdent("App"),
 						},
 					},
 				},
 			},
-			Results: &ast.FieldList{
-				List: []*ast.Field{
-					{Type: &ast.StarExpr{X: ast.NewIdent(serviceName)}},
+			Results: &dst.FieldList{
+				List: []*dst.Field{
+					{Type: &dst.StarExpr{X: dst.NewIdent(serviceName)}},
 				},
 			},
 		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						&ast.UnaryExpr{
+		Body: &dst.BlockStmt{
+			List: []dst.Stmt{
+				&dst.ReturnStmt{
+					Results: []dst.Expr{
+						&dst.UnaryExpr{
 							Op: token.AND,
-							X: &ast.CompositeLit{
-								Type: ast.NewIdent(serviceName),
-								Elts: []ast.Expr{ast.NewIdent("app")},
+							X: &dst.CompositeLit{
+								Type: dst.NewIdent(serviceName),
+								Elts: []dst.Expr{dst.NewIdent("app")},
 							},
 						},
 					},
@@ -107,67 +98,62 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 	})
 
 	// func (t *Test) GetTest() (any, error) { return nil, errors.New("method not implemented") }
-	decls = append(decls, &ast.FuncDecl{
-		Recv: &ast.FieldList{
-			List: []*ast.Field{
+	decls = append(decls, &dst.FuncDecl{
+		Recv: &dst.FieldList{
+			List: []*dst.Field{
 				{
-					Names: []*ast.Ident{ast.NewIdent(ins)},
-					Type:  &ast.StarExpr{X: ast.NewIdent(serviceName)},
+					Names: []*dst.Ident{dst.NewIdent(ins)},
+					Type:  &dst.StarExpr{X: dst.NewIdent(serviceName)},
 				},
 			},
 		},
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Name: ast.NewIdent(fmt.Sprintf("Get%s", serviceName)),
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{
-				List: []*ast.Field{
+		Name: dst.NewIdent(fmt.Sprintf("Get%s", serviceName)),
+		Type: &dst.FuncType{
+			Params: &dst.FieldList{
+				List: []*dst.Field{
 					{
-						Names: []*ast.Ident{ast.NewIdent("ctx")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("context2"),
-								Sel: ast.NewIdent("Context"),
+						Names: []*dst.Ident{dst.NewIdent("ctx")},
+						Type: &dst.StarExpr{
+							X: &dst.SelectorExpr{
+								X:   dst.NewIdent("context2"),
+								Sel: dst.NewIdent("Context"),
 							},
 						},
 					},
 					{
-						Names: []*ast.Ident{ast.NewIdent("query")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("request"),
-								Sel: ast.NewIdent("Request"),
+						Names: []*dst.Ident{dst.NewIdent("query")},
+						Type: &dst.StarExpr{
+							X: &dst.SelectorExpr{
+								X:   dst.NewIdent("request"),
+								Sel: dst.NewIdent("Request"),
 							},
 						},
 					},
 					{
-						Names: []*ast.Ident{ast.NewIdent("id")},
-						Type:  ast.NewIdent("string"),
+						Names: []*dst.Ident{dst.NewIdent("id")},
+						Type:  dst.NewIdent("string"),
 					},
 				},
 			},
-			Results: &ast.FieldList{
-				List: []*ast.Field{
-					{Type: ast.NewIdent("any")},
-					{Type: ast.NewIdent("error")},
+			Results: &dst.FieldList{
+				List: []*dst.Field{
+					{Type: dst.NewIdent("any")},
+					{Type: dst.NewIdent("error")},
 				},
 			},
 		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						ast.NewIdent("nil"),
-						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent("errors"),
-								Sel: ast.NewIdent("New"),
+		Body: &dst.BlockStmt{
+			List: []dst.Stmt{
+				&dst.ReturnStmt{
+					Results: []dst.Expr{
+						dst.NewIdent("nil"),
+						&dst.CallExpr{
+							Fun: &dst.SelectorExpr{
+								X:   dst.NewIdent("errors"),
+								Sel: dst.NewIdent("New"),
 							},
-							Args: []ast.Expr{
-								&ast.BasicLit{
+							Args: []dst.Expr{
+								&dst.BasicLit{
 									Kind:  token.STRING,
 									Value: "\"method not implemented\"",
 								},
@@ -180,63 +166,58 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 	})
 
 	// func (t *Test) ListTest() (any, error) { return nil, errors.New("method not implemented") }
-	decls = append(decls, &ast.FuncDecl{
-		Recv: &ast.FieldList{
-			List: []*ast.Field{
+	decls = append(decls, &dst.FuncDecl{
+		Recv: &dst.FieldList{
+			List: []*dst.Field{
 				{
-					Names: []*ast.Ident{ast.NewIdent(ins)},
-					Type:  &ast.StarExpr{X: ast.NewIdent(serviceName)},
+					Names: []*dst.Ident{dst.NewIdent(ins)},
+					Type:  &dst.StarExpr{X: dst.NewIdent(serviceName)},
 				},
 			},
 		},
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Name: ast.NewIdent(fmt.Sprintf("List%s", serviceName)),
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{
-				List: []*ast.Field{
+		Name: dst.NewIdent(fmt.Sprintf("List%s", serviceName)),
+		Type: &dst.FuncType{
+			Params: &dst.FieldList{
+				List: []*dst.Field{
 					{
-						Names: []*ast.Ident{ast.NewIdent("ctx")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("context2"),
-								Sel: ast.NewIdent("Context"),
+						Names: []*dst.Ident{dst.NewIdent("ctx")},
+						Type: &dst.StarExpr{
+							X: &dst.SelectorExpr{
+								X:   dst.NewIdent("context2"),
+								Sel: dst.NewIdent("Context"),
 							},
 						},
 					},
 					{
-						Names: []*ast.Ident{ast.NewIdent("query")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("request"),
-								Sel: ast.NewIdent("Request"),
+						Names: []*dst.Ident{dst.NewIdent("query")},
+						Type: &dst.StarExpr{
+							X: &dst.SelectorExpr{
+								X:   dst.NewIdent("request"),
+								Sel: dst.NewIdent("Request"),
 							},
 						},
 					},
 				},
 			},
-			Results: &ast.FieldList{
-				List: []*ast.Field{
-					{Type: ast.NewIdent("any")},
-					{Type: ast.NewIdent("error")},
+			Results: &dst.FieldList{
+				List: []*dst.Field{
+					{Type: dst.NewIdent("any")},
+					{Type: dst.NewIdent("error")},
 				},
 			},
 		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						ast.NewIdent("nil"),
-						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent("errors"),
-								Sel: ast.NewIdent("New"),
+		Body: &dst.BlockStmt{
+			List: []dst.Stmt{
+				&dst.ReturnStmt{
+					Results: []dst.Expr{
+						dst.NewIdent("nil"),
+						&dst.CallExpr{
+							Fun: &dst.SelectorExpr{
+								X:   dst.NewIdent("errors"),
+								Sel: dst.NewIdent("New"),
 							},
-							Args: []ast.Expr{
-								&ast.BasicLit{
+							Args: []dst.Expr{
+								&dst.BasicLit{
 									Kind:  token.STRING,
 									Value: "\"method not implemented\"",
 								},
@@ -249,63 +230,58 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 	})
 
 	// func (t *Test) CreateTest() (any, error) { return nil, errors.New("method not implemented") }
-	decls = append(decls, &ast.FuncDecl{
-		Recv: &ast.FieldList{
-			List: []*ast.Field{
+	decls = append(decls, &dst.FuncDecl{
+		Recv: &dst.FieldList{
+			List: []*dst.Field{
 				{
-					Names: []*ast.Ident{ast.NewIdent(ins)},
-					Type:  &ast.StarExpr{X: ast.NewIdent(serviceName)},
+					Names: []*dst.Ident{dst.NewIdent(ins)},
+					Type:  &dst.StarExpr{X: dst.NewIdent(serviceName)},
 				},
 			},
 		},
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Name: ast.NewIdent(fmt.Sprintf("Create%s", serviceName)),
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{
-				List: []*ast.Field{
+		Name: dst.NewIdent(fmt.Sprintf("Create%s", serviceName)),
+		Type: &dst.FuncType{
+			Params: &dst.FieldList{
+				List: []*dst.Field{
 					{
-						Names: []*ast.Ident{ast.NewIdent("ctx")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("context2"),
-								Sel: ast.NewIdent("Context"),
+						Names: []*dst.Ident{dst.NewIdent("ctx")},
+						Type: &dst.StarExpr{
+							X: &dst.SelectorExpr{
+								X:   dst.NewIdent("context2"),
+								Sel: dst.NewIdent("Context"),
 							},
 						},
 					},
 					{
-						Names: []*ast.Ident{ast.NewIdent("query")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("request"),
-								Sel: ast.NewIdent("Request"),
+						Names: []*dst.Ident{dst.NewIdent("query")},
+						Type: &dst.StarExpr{
+							X: &dst.SelectorExpr{
+								X:   dst.NewIdent("request"),
+								Sel: dst.NewIdent("Request"),
 							},
 						},
 					},
 				},
 			},
-			Results: &ast.FieldList{
-				List: []*ast.Field{
-					{Type: ast.NewIdent("any")},
-					{Type: ast.NewIdent("error")},
+			Results: &dst.FieldList{
+				List: []*dst.Field{
+					{Type: dst.NewIdent("any")},
+					{Type: dst.NewIdent("error")},
 				},
 			},
 		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						ast.NewIdent("nil"),
-						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent("errors"),
-								Sel: ast.NewIdent("New"),
+		Body: &dst.BlockStmt{
+			List: []dst.Stmt{
+				&dst.ReturnStmt{
+					Results: []dst.Expr{
+						dst.NewIdent("nil"),
+						&dst.CallExpr{
+							Fun: &dst.SelectorExpr{
+								X:   dst.NewIdent("errors"),
+								Sel: dst.NewIdent("New"),
 							},
-							Args: []ast.Expr{
-								&ast.BasicLit{
+							Args: []dst.Expr{
+								&dst.BasicLit{
 									Kind:  token.STRING,
 									Value: "\"method not implemented\"",
 								},
@@ -318,67 +294,62 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 	})
 
 	// func (t *Test) UpdateTest() (any, error) { return nil, errors.New("method not implemented") }
-	decls = append(decls, &ast.FuncDecl{
-		Recv: &ast.FieldList{
-			List: []*ast.Field{
+	decls = append(decls, &dst.FuncDecl{
+		Recv: &dst.FieldList{
+			List: []*dst.Field{
 				{
-					Names: []*ast.Ident{ast.NewIdent(ins)},
-					Type:  &ast.StarExpr{X: ast.NewIdent(serviceName)},
+					Names: []*dst.Ident{dst.NewIdent(ins)},
+					Type:  &dst.StarExpr{X: dst.NewIdent(serviceName)},
 				},
 			},
 		},
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Name: ast.NewIdent(fmt.Sprintf("Update%s", serviceName)),
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{
-				List: []*ast.Field{
+		Name: dst.NewIdent(fmt.Sprintf("Update%s", serviceName)),
+		Type: &dst.FuncType{
+			Params: &dst.FieldList{
+				List: []*dst.Field{
 					{
-						Names: []*ast.Ident{ast.NewIdent("ctx")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("context2"),
-								Sel: ast.NewIdent("Context"),
+						Names: []*dst.Ident{dst.NewIdent("ctx")},
+						Type: &dst.StarExpr{
+							X: &dst.SelectorExpr{
+								X:   dst.NewIdent("context2"),
+								Sel: dst.NewIdent("Context"),
 							},
 						},
 					},
 					{
-						Names: []*ast.Ident{ast.NewIdent("query")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("request"),
-								Sel: ast.NewIdent("Request"),
+						Names: []*dst.Ident{dst.NewIdent("query")},
+						Type: &dst.StarExpr{
+							X: &dst.SelectorExpr{
+								X:   dst.NewIdent("request"),
+								Sel: dst.NewIdent("Request"),
 							},
 						},
 					},
 					{
-						Names: []*ast.Ident{ast.NewIdent("id")},
-						Type:  ast.NewIdent("string"),
+						Names: []*dst.Ident{dst.NewIdent("id")},
+						Type:  dst.NewIdent("string"),
 					},
 				},
 			},
-			Results: &ast.FieldList{
-				List: []*ast.Field{
-					{Type: ast.NewIdent("any")},
-					{Type: ast.NewIdent("error")},
+			Results: &dst.FieldList{
+				List: []*dst.Field{
+					{Type: dst.NewIdent("any")},
+					{Type: dst.NewIdent("error")},
 				},
 			},
 		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						ast.NewIdent("nil"),
-						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent("errors"),
-								Sel: ast.NewIdent("New"),
+		Body: &dst.BlockStmt{
+			List: []dst.Stmt{
+				&dst.ReturnStmt{
+					Results: []dst.Expr{
+						dst.NewIdent("nil"),
+						&dst.CallExpr{
+							Fun: &dst.SelectorExpr{
+								X:   dst.NewIdent("errors"),
+								Sel: dst.NewIdent("New"),
 							},
-							Args: []ast.Expr{
-								&ast.BasicLit{
+							Args: []dst.Expr{
+								&dst.BasicLit{
 									Kind:  token.STRING,
 									Value: "\"method not implemented\"",
 								},
@@ -391,65 +362,60 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 	})
 
 	// func (t *Test) DeleteTest() error { return errors.New("method not implemented") }
-	decls = append(decls, &ast.FuncDecl{
-		Recv: &ast.FieldList{
-			List: []*ast.Field{
+	decls = append(decls, &dst.FuncDecl{
+		Recv: &dst.FieldList{
+			List: []*dst.Field{
 				{
-					Names: []*ast.Ident{ast.NewIdent(ins)},
-					Type:  &ast.StarExpr{X: ast.NewIdent(serviceName)},
+					Names: []*dst.Ident{dst.NewIdent(ins)},
+					Type:  &dst.StarExpr{X: dst.NewIdent(serviceName)},
 				},
 			},
 		},
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Name: ast.NewIdent(fmt.Sprintf("Delete%s", serviceName)),
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{
-				List: []*ast.Field{
+		Name: dst.NewIdent(fmt.Sprintf("Delete%s", serviceName)),
+		Type: &dst.FuncType{
+			Params: &dst.FieldList{
+				List: []*dst.Field{
 					{
-						Names: []*ast.Ident{ast.NewIdent("ctx")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("context2"),
-								Sel: ast.NewIdent("Context"),
+						Names: []*dst.Ident{dst.NewIdent("ctx")},
+						Type: &dst.StarExpr{
+							X: &dst.SelectorExpr{
+								X:   dst.NewIdent("context2"),
+								Sel: dst.NewIdent("Context"),
 							},
 						},
 					},
 					{
-						Names: []*ast.Ident{ast.NewIdent("query")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("request"),
-								Sel: ast.NewIdent("Request"),
+						Names: []*dst.Ident{dst.NewIdent("query")},
+						Type: &dst.StarExpr{
+							X: &dst.SelectorExpr{
+								X:   dst.NewIdent("request"),
+								Sel: dst.NewIdent("Request"),
 							},
 						},
 					},
 					{
-						Names: []*ast.Ident{ast.NewIdent("id")},
-						Type:  ast.NewIdent("string"),
+						Names: []*dst.Ident{dst.NewIdent("id")},
+						Type:  dst.NewIdent("string"),
 					},
 				},
 			},
-			Results: &ast.FieldList{
-				List: []*ast.Field{
-					{Type: ast.NewIdent("error")},
+			Results: &dst.FieldList{
+				List: []*dst.Field{
+					{Type: dst.NewIdent("error")},
 				},
 			},
 		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent("errors"),
-								Sel: ast.NewIdent("New"),
+		Body: &dst.BlockStmt{
+			List: []dst.Stmt{
+				&dst.ReturnStmt{
+					Results: []dst.Expr{
+						&dst.CallExpr{
+							Fun: &dst.SelectorExpr{
+								X:   dst.NewIdent("errors"),
+								Sel: dst.NewIdent("New"),
 							},
-							Args: []ast.Expr{
-								&ast.BasicLit{
+							Args: []dst.Expr{
+								&dst.BasicLit{
 									Kind:  token.STRING,
 									Value: "\"method not implemented\"",
 								},
@@ -462,15 +428,18 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 	})
 
 	imports := helper.GenImport(pkgImport...)
-	decls = append([]ast.Decl{imports.GenDecl()}, decls...)
-	file := &ast.File{
-		Name:    ast.NewIdent("service"),
-		Imports: imports.ImportSpec(),
+	decls = append([]dst.Decl{imports.GenDeclDst()}, decls...)
+	for i := range decls {
+		decls[i].Decorations().Before = dst.EmptyLine
+	}
+	file := &dst.File{
+		Name:    dst.NewIdent("service"),
+		Imports: imports.ImportSpecDst(),
 		Decls:   decls,
 	}
 
 	res <- config2.Builder{
-		File:     file,
+		DstFile:  file,
 		Pathname: fmt.Sprintf("internal/service/%s_service.go", s.cfg.Name),
 	}
 }
@@ -490,69 +459,64 @@ func (s *addEndpoint) addEndpointUsecase(wg *sync.WaitGroup, res chan<- config2.
 	}()
 
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, s.app.Dir(fmt.Sprintf("internal/service/%s_service.go", s.cfg.ServiceName)), nil, parser.AllErrors)
+	file, err := decorator.ParseFile(fset, s.app.Dir(fmt.Sprintf("internal/service/%s_service.go", s.cfg.ServiceName)), nil, parser.AllErrors)
 	if err != nil {
 		resp.Err = err
 		return
 	}
 
-	file.Decls = append(file.Decls, &ast.FuncDecl{
-		Recv: &ast.FieldList{
-			List: []*ast.Field{
+	decl := &dst.FuncDecl{
+		Recv: &dst.FieldList{
+			List: []*dst.Field{
 				{
-					Names: []*ast.Ident{ast.NewIdent(ins)},
-					Type:  &ast.StarExpr{X: ast.NewIdent(serviceName)},
+					Names: []*dst.Ident{dst.NewIdent(ins)},
+					Type:  &dst.StarExpr{X: dst.NewIdent(serviceName)},
 				},
 			},
 		},
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Name: ast.NewIdent(s.cfg.Name),
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{
-				List: []*ast.Field{
+		Name: dst.NewIdent(s.cfg.Name),
+		Type: &dst.FuncType{
+			Params: &dst.FieldList{
+				List: []*dst.Field{
 					{
-						Names: []*ast.Ident{ast.NewIdent("ctx")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("context2"),
-								Sel: ast.NewIdent("Context"),
+						Names: []*dst.Ident{dst.NewIdent("ctx")},
+						Type: &dst.StarExpr{
+							X: &dst.SelectorExpr{
+								X:   dst.NewIdent("context2"),
+								Sel: dst.NewIdent("Context"),
 							},
 						},
 					},
 					{
-						Names: []*ast.Ident{ast.NewIdent("query")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("request"),
-								Sel: ast.NewIdent("Request"),
+						Names: []*dst.Ident{dst.NewIdent("query")},
+						Type: &dst.StarExpr{
+							X: &dst.SelectorExpr{
+								X:   dst.NewIdent("request"),
+								Sel: dst.NewIdent("Request"),
 							},
 						},
 					},
 				},
 			},
-			Results: &ast.FieldList{
-				List: []*ast.Field{
-					{Type: ast.NewIdent("any")},
-					{Type: ast.NewIdent("error")},
+			Results: &dst.FieldList{
+				List: []*dst.Field{
+					{Type: dst.NewIdent("any")},
+					{Type: dst.NewIdent("error")},
 				},
 			},
 		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						ast.NewIdent("nil"),
-						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent("errors"),
-								Sel: ast.NewIdent("New"),
+		Body: &dst.BlockStmt{
+			List: []dst.Stmt{
+				&dst.ReturnStmt{
+					Results: []dst.Expr{
+						dst.NewIdent("nil"),
+						&dst.CallExpr{
+							Fun: &dst.SelectorExpr{
+								X:   dst.NewIdent("errors"),
+								Sel: dst.NewIdent("New"),
 							},
-							Args: []ast.Expr{
-								&ast.BasicLit{
+							Args: []dst.Expr{
+								&dst.BasicLit{
 									Kind:  token.STRING,
 									Value: "\"method not implemented\"",
 								},
@@ -562,10 +526,12 @@ func (s *addEndpoint) addEndpointUsecase(wg *sync.WaitGroup, res chan<- config2.
 				},
 			},
 		},
-	})
+	}
+	decl.Decorations().Before = dst.EmptyLine
+	file.Decls = append(file.Decls, decl)
 
 	resp = config2.Builder{
-		File:     file,
+		DstFile:  file,
 		Pathname: fmt.Sprintf("internal/service/%s_service.go", s.cfg.ServiceName),
 	}
 }

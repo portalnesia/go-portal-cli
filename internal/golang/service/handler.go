@@ -9,11 +9,12 @@ package service
 
 import (
 	"fmt"
+	"github.com/dave/dst"
+	"github.com/dave/dst/decorator"
 	"github.com/fatih/color"
 	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
 	"go.portalnesia.com/portal-cli/pkg/helper"
 	"go.portalnesia.com/utils"
-	"go/ast"
 	"go/parser"
 	"go/token"
 	"strings"
@@ -34,35 +35,30 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 		fmt.Sprintf(`"%s/internal/config"`, s.cfg.Module),
 		fmt.Sprintf(`"%s/internal/service"`, s.cfg.Module),
 	}
-	decls := make([]ast.Decl, 0)
+	decls := make([]dst.Decl, 0)
 
 	// Struct type
-	decls = append(decls, &ast.GenDecl{
+	decls = append(decls, &dst.GenDecl{
 		Tok: token.TYPE,
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong untuk newline
-			},
-		},
-		Specs: []ast.Spec{
-			&ast.TypeSpec{
-				Name: ast.NewIdent(serviceName),
-				Type: &ast.StructType{
-					Fields: &ast.FieldList{
-						List: []*ast.Field{
+		Specs: []dst.Spec{
+			&dst.TypeSpec{
+				Name: dst.NewIdent(serviceName),
+				Type: &dst.StructType{
+					Fields: &dst.FieldList{
+						List: []*dst.Field{
 							{
-								Names: []*ast.Ident{ast.NewIdent("app")},
-								Type: &ast.SelectorExpr{
-									X:   ast.NewIdent("config"),
-									Sel: ast.NewIdent("App"),
+								Names: []*dst.Ident{dst.NewIdent("app")},
+								Type: &dst.SelectorExpr{
+									X:   dst.NewIdent("config"),
+									Sel: dst.NewIdent("App"),
 								},
 							},
 							{
-								Names: []*ast.Ident{ast.NewIdent("s")},
-								Type: &ast.StarExpr{
-									X: &ast.SelectorExpr{
-										X:   ast.NewIdent("service"),
-										Sel: ast.NewIdent(serviceName),
+								Names: []*dst.Ident{dst.NewIdent("s")},
+								Type: &dst.StarExpr{
+									X: &dst.SelectorExpr{
+										X:   dst.NewIdent("service"),
+										Sel: dst.NewIdent(serviceName),
 									},
 								},
 							},
@@ -74,63 +70,58 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 	})
 
 	// Constructor function
-	decls = append(decls, &ast.FuncDecl{
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Name: ast.NewIdent(fmt.Sprintf("New%s", serviceName)),
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{
-				List: []*ast.Field{
+	decls = append(decls, &dst.FuncDecl{
+		Name: dst.NewIdent(fmt.Sprintf("New%s", serviceName)),
+		Type: &dst.FuncType{
+			Params: &dst.FieldList{
+				List: []*dst.Field{
 					{
-						Names: []*ast.Ident{ast.NewIdent("app")},
-						Type: &ast.SelectorExpr{
-							X:   ast.NewIdent("config"),
-							Sel: ast.NewIdent("App"),
+						Names: []*dst.Ident{dst.NewIdent("app")},
+						Type: &dst.SelectorExpr{
+							X:   dst.NewIdent("config"),
+							Sel: dst.NewIdent("App"),
 						},
 					},
 				},
 			},
-			Results: &ast.FieldList{
-				List: []*ast.Field{
+			Results: &dst.FieldList{
+				List: []*dst.Field{
 					{
-						Type: &ast.StarExpr{
-							X: ast.NewIdent(serviceName),
+						Type: &dst.StarExpr{
+							X: dst.NewIdent(serviceName),
 						},
 					},
 				},
 			},
 		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
+		Body: &dst.BlockStmt{
+			List: []dst.Stmt{
 				// u := usecase.NewTest(app)
-				&ast.AssignStmt{
-					Lhs: []ast.Expr{ast.NewIdent("s")},
+				&dst.AssignStmt{
+					Lhs: []dst.Expr{dst.NewIdent("s")},
 					Tok: token.DEFINE,
-					Rhs: []ast.Expr{
-						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent("service"),
-								Sel: ast.NewIdent(fmt.Sprintf("New%s", serviceName)),
+					Rhs: []dst.Expr{
+						&dst.CallExpr{
+							Fun: &dst.SelectorExpr{
+								X:   dst.NewIdent("service"),
+								Sel: dst.NewIdent(fmt.Sprintf("New%s", serviceName)),
 							},
-							Args: []ast.Expr{
-								ast.NewIdent("app"),
+							Args: []dst.Expr{
+								dst.NewIdent("app"),
 							},
 						},
 					},
 				},
 				// return &Test{app, u}
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						&ast.UnaryExpr{
+				&dst.ReturnStmt{
+					Results: []dst.Expr{
+						&dst.UnaryExpr{
 							Op: token.AND,
-							X: &ast.CompositeLit{
-								Type: ast.NewIdent(serviceName),
-								Elts: []ast.Expr{
-									ast.NewIdent("app"),
-									ast.NewIdent("s"),
+							X: &dst.CompositeLit{
+								Type: dst.NewIdent(serviceName),
+								Elts: []dst.Expr{
+									dst.NewIdent("app"),
+									dst.NewIdent("s"),
 								},
 							},
 						},
@@ -141,97 +132,92 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 	})
 
 	// Get
-	decls = append(decls, &ast.FuncDecl{
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Recv: &ast.FieldList{
-			List: []*ast.Field{
+	decls = append(decls, &dst.FuncDecl{
+		Recv: &dst.FieldList{
+			List: []*dst.Field{
 				{
-					Names: []*ast.Ident{ast.NewIdent(ins)},
-					Type:  &ast.StarExpr{X: ast.NewIdent(serviceName)},
+					Names: []*dst.Ident{dst.NewIdent(ins)},
+					Type:  &dst.StarExpr{X: dst.NewIdent(serviceName)},
 				},
 			},
 		},
-		Name: ast.NewIdent(fmt.Sprintf("Get%s", serviceName)),
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{
-				List: []*ast.Field{
+		Name: dst.NewIdent(fmt.Sprintf("Get%s", serviceName)),
+		Type: &dst.FuncType{
+			Params: &dst.FieldList{
+				List: []*dst.Field{
 					{
-						Names: []*ast.Ident{ast.NewIdent("c")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("fiber"),
-								Sel: ast.NewIdent("Ctx"),
+						Names: []*dst.Ident{dst.NewIdent("c")},
+						Type: &dst.StarExpr{
+							X: &dst.SelectorExpr{
+								X:   dst.NewIdent("fiber"),
+								Sel: dst.NewIdent("Ctx"),
 							},
 						},
 					},
 				},
 			},
-			Results: &ast.FieldList{
-				List: []*ast.Field{
-					{Type: ast.NewIdent("error")},
+			Results: &dst.FieldList{
+				List: []*dst.Field{
+					{Type: dst.NewIdent("error")},
 				},
 			},
 		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						&ast.CallExpr{
-							Fun: ast.NewIdent("newHandler"),
-							Args: []ast.Expr{
-								&ast.SelectorExpr{
-									X:   ast.NewIdent(ins),
-									Sel: ast.NewIdent("app"),
+		Body: &dst.BlockStmt{
+			List: []dst.Stmt{
+				&dst.ReturnStmt{
+					Results: []dst.Expr{
+						&dst.CallExpr{
+							Fun: dst.NewIdent("newHandler"),
+							Args: []dst.Expr{
+								&dst.SelectorExpr{
+									X:   dst.NewIdent(ins),
+									Sel: dst.NewIdent("app"),
 								},
-								ast.NewIdent("c"),
-								&ast.FuncLit{
-									Type: &ast.FuncType{
-										Params: &ast.FieldList{
-											List: []*ast.Field{
+								dst.NewIdent("c"),
+								&dst.FuncLit{
+									Type: &dst.FuncType{
+										Params: &dst.FieldList{
+											List: []*dst.Field{
 												{
-													Names: []*ast.Ident{ast.NewIdent("ctx")},
-													Type: &ast.StarExpr{
-														X: &ast.SelectorExpr{
-															X:   ast.NewIdent("context"),
-															Sel: ast.NewIdent("Context"),
+													Names: []*dst.Ident{dst.NewIdent("ctx")},
+													Type: &dst.StarExpr{
+														X: &dst.SelectorExpr{
+															X:   dst.NewIdent("context"),
+															Sel: dst.NewIdent("Context"),
 														},
 													},
 												},
 												{
-													Names: []*ast.Ident{ast.NewIdent("query")},
-													Type: &ast.StarExpr{
-														X: &ast.SelectorExpr{
-															X:   ast.NewIdent("request"),
-															Sel: ast.NewIdent("Request"),
+													Names: []*dst.Ident{dst.NewIdent("query")},
+													Type: &dst.StarExpr{
+														X: &dst.SelectorExpr{
+															X:   dst.NewIdent("request"),
+															Sel: dst.NewIdent("Request"),
 														},
 													},
 												},
 											},
 										},
-										Results: &ast.FieldList{
-											List: []*ast.Field{
-												{Type: ast.NewIdent("error")},
+										Results: &dst.FieldList{
+											List: []*dst.Field{
+												{Type: dst.NewIdent("error")},
 											},
 										},
 									},
-									Body: &ast.BlockStmt{
-										List: []ast.Stmt{
+									Body: &dst.BlockStmt{
+										List: []dst.Stmt{
 											// id := c.Params("id")
-											&ast.AssignStmt{
-												Lhs: []ast.Expr{ast.NewIdent("id")},
+											&dst.AssignStmt{
+												Lhs: []dst.Expr{dst.NewIdent("id")},
 												Tok: token.DEFINE,
-												Rhs: []ast.Expr{
-													&ast.CallExpr{
-														Fun: &ast.SelectorExpr{
-															X:   ast.NewIdent("c"),
-															Sel: ast.NewIdent("Params"),
+												Rhs: []dst.Expr{
+													&dst.CallExpr{
+														Fun: &dst.SelectorExpr{
+															X:   dst.NewIdent("c"),
+															Sel: dst.NewIdent("Params"),
 														},
-														Args: []ast.Expr{
-															&ast.BasicLit{
+														Args: []dst.Expr{
+															&dst.BasicLit{
 																Kind:  token.STRING,
 																Value: "\"id\"",
 															},
@@ -240,52 +226,52 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 												},
 											},
 											// data, err := t.u.GetTest(ctx, query)
-											&ast.AssignStmt{
-												Lhs: []ast.Expr{
-													ast.NewIdent("data"),
-													ast.NewIdent("err"),
+											&dst.AssignStmt{
+												Lhs: []dst.Expr{
+													dst.NewIdent("data"),
+													dst.NewIdent("err"),
 												},
 												Tok: token.DEFINE,
-												Rhs: []ast.Expr{
-													&ast.CallExpr{
-														Fun: &ast.SelectorExpr{
-															X: &ast.SelectorExpr{
-																X:   ast.NewIdent(ins),
-																Sel: ast.NewIdent("s"),
+												Rhs: []dst.Expr{
+													&dst.CallExpr{
+														Fun: &dst.SelectorExpr{
+															X: &dst.SelectorExpr{
+																X:   dst.NewIdent(ins),
+																Sel: dst.NewIdent("s"),
 															},
-															Sel: ast.NewIdent(fmt.Sprintf("Get%s", serviceName)),
+															Sel: dst.NewIdent(fmt.Sprintf("Get%s", serviceName)),
 														},
-														Args: []ast.Expr{
-															ast.NewIdent("ctx"),
-															ast.NewIdent("query"),
-															ast.NewIdent("id"),
+														Args: []dst.Expr{
+															dst.NewIdent("ctx"),
+															dst.NewIdent("query"),
+															dst.NewIdent("id"),
 														},
 													},
 												},
 											},
 											// if err != nil { return err }
-											&ast.IfStmt{
-												Cond: &ast.BinaryExpr{
-													X:  ast.NewIdent("err"),
+											&dst.IfStmt{
+												Cond: &dst.BinaryExpr{
+													X:  dst.NewIdent("err"),
 													Op: token.NEQ,
-													Y:  ast.NewIdent("nil"),
+													Y:  dst.NewIdent("nil"),
 												},
-												Body: &ast.BlockStmt{
-													List: []ast.Stmt{
-														&ast.ReturnStmt{
-															Results: []ast.Expr{ast.NewIdent("err")},
+												Body: &dst.BlockStmt{
+													List: []dst.Stmt{
+														&dst.ReturnStmt{
+															Results: []dst.Expr{dst.NewIdent("err")},
 														},
 													},
 												},
 											},
 											// return t.Response(c, data)
-											&ast.ReturnStmt{
-												Results: []ast.Expr{
-													&ast.CallExpr{
-														Fun: ast.NewIdent("newResponse"),
-														Args: []ast.Expr{
-															ast.NewIdent("c"),
-															ast.NewIdent("data"),
+											&dst.ReturnStmt{
+												Results: []dst.Expr{
+													&dst.CallExpr{
+														Fun: dst.NewIdent("newResponse"),
+														Args: []dst.Expr{
+															dst.NewIdent("c"),
+															dst.NewIdent("data"),
 														},
 													},
 												},
@@ -302,131 +288,126 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 	})
 
 	// List
-	decls = append(decls, &ast.FuncDecl{
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Recv: &ast.FieldList{
-			List: []*ast.Field{
+	decls = append(decls, &dst.FuncDecl{
+		Recv: &dst.FieldList{
+			List: []*dst.Field{
 				{
-					Names: []*ast.Ident{ast.NewIdent(ins)},
-					Type:  &ast.StarExpr{X: ast.NewIdent(serviceName)},
+					Names: []*dst.Ident{dst.NewIdent(ins)},
+					Type:  &dst.StarExpr{X: dst.NewIdent(serviceName)},
 				},
 			},
 		},
-		Name: ast.NewIdent(fmt.Sprintf("List%s", serviceName)),
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{
-				List: []*ast.Field{
+		Name: dst.NewIdent(fmt.Sprintf("List%s", serviceName)),
+		Type: &dst.FuncType{
+			Params: &dst.FieldList{
+				List: []*dst.Field{
 					{
-						Names: []*ast.Ident{ast.NewIdent("c")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("fiber"),
-								Sel: ast.NewIdent("Ctx"),
+						Names: []*dst.Ident{dst.NewIdent("c")},
+						Type: &dst.StarExpr{
+							X: &dst.SelectorExpr{
+								X:   dst.NewIdent("fiber"),
+								Sel: dst.NewIdent("Ctx"),
 							},
 						},
 					},
 				},
 			},
-			Results: &ast.FieldList{
-				List: []*ast.Field{
-					{Type: ast.NewIdent("error")},
+			Results: &dst.FieldList{
+				List: []*dst.Field{
+					{Type: dst.NewIdent("error")},
 				},
 			},
 		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						&ast.CallExpr{
-							Fun: ast.NewIdent("newHandler"),
-							Args: []ast.Expr{
-								&ast.SelectorExpr{
-									X:   ast.NewIdent(ins),
-									Sel: ast.NewIdent("app"),
+		Body: &dst.BlockStmt{
+			List: []dst.Stmt{
+				&dst.ReturnStmt{
+					Results: []dst.Expr{
+						&dst.CallExpr{
+							Fun: dst.NewIdent("newHandler"),
+							Args: []dst.Expr{
+								&dst.SelectorExpr{
+									X:   dst.NewIdent(ins),
+									Sel: dst.NewIdent("app"),
 								},
-								ast.NewIdent("c"),
-								&ast.FuncLit{
-									Type: &ast.FuncType{
-										Params: &ast.FieldList{
-											List: []*ast.Field{
+								dst.NewIdent("c"),
+								&dst.FuncLit{
+									Type: &dst.FuncType{
+										Params: &dst.FieldList{
+											List: []*dst.Field{
 												{
-													Names: []*ast.Ident{ast.NewIdent("ctx")},
-													Type: &ast.StarExpr{
-														X: &ast.SelectorExpr{
-															X:   ast.NewIdent("context"),
-															Sel: ast.NewIdent("Context"),
+													Names: []*dst.Ident{dst.NewIdent("ctx")},
+													Type: &dst.StarExpr{
+														X: &dst.SelectorExpr{
+															X:   dst.NewIdent("context"),
+															Sel: dst.NewIdent("Context"),
 														},
 													},
 												},
 												{
-													Names: []*ast.Ident{ast.NewIdent("query")},
-													Type: &ast.StarExpr{
-														X: &ast.SelectorExpr{
-															X:   ast.NewIdent("request"),
-															Sel: ast.NewIdent("Request"),
+													Names: []*dst.Ident{dst.NewIdent("query")},
+													Type: &dst.StarExpr{
+														X: &dst.SelectorExpr{
+															X:   dst.NewIdent("request"),
+															Sel: dst.NewIdent("Request"),
 														},
 													},
 												},
 											},
 										},
-										Results: &ast.FieldList{
-											List: []*ast.Field{
-												{Type: ast.NewIdent("error")},
+										Results: &dst.FieldList{
+											List: []*dst.Field{
+												{Type: dst.NewIdent("error")},
 											},
 										},
 									},
-									Body: &ast.BlockStmt{
-										List: []ast.Stmt{
+									Body: &dst.BlockStmt{
+										List: []dst.Stmt{
 											// data, err := t.u.GetTest(ctx, trxDb, query)
-											&ast.AssignStmt{
-												Lhs: []ast.Expr{
-													ast.NewIdent("data"),
-													ast.NewIdent("err"),
+											&dst.AssignStmt{
+												Lhs: []dst.Expr{
+													dst.NewIdent("data"),
+													dst.NewIdent("err"),
 												},
 												Tok: token.DEFINE,
-												Rhs: []ast.Expr{
-													&ast.CallExpr{
-														Fun: &ast.SelectorExpr{
-															X: &ast.SelectorExpr{
-																X:   ast.NewIdent(ins),
-																Sel: ast.NewIdent("s"),
+												Rhs: []dst.Expr{
+													&dst.CallExpr{
+														Fun: &dst.SelectorExpr{
+															X: &dst.SelectorExpr{
+																X:   dst.NewIdent(ins),
+																Sel: dst.NewIdent("s"),
 															},
-															Sel: ast.NewIdent(fmt.Sprintf("List%s", serviceName)),
+															Sel: dst.NewIdent(fmt.Sprintf("List%s", serviceName)),
 														},
-														Args: []ast.Expr{
-															ast.NewIdent("ctx"),
-															ast.NewIdent("query"),
+														Args: []dst.Expr{
+															dst.NewIdent("ctx"),
+															dst.NewIdent("query"),
 														},
 													},
 												},
 											},
 											// if err != nil { return err }
-											&ast.IfStmt{
-												Cond: &ast.BinaryExpr{
-													X:  ast.NewIdent("err"),
+											&dst.IfStmt{
+												Cond: &dst.BinaryExpr{
+													X:  dst.NewIdent("err"),
 													Op: token.NEQ,
-													Y:  ast.NewIdent("nil"),
+													Y:  dst.NewIdent("nil"),
 												},
-												Body: &ast.BlockStmt{
-													List: []ast.Stmt{
-														&ast.ReturnStmt{
-															Results: []ast.Expr{ast.NewIdent("err")},
+												Body: &dst.BlockStmt{
+													List: []dst.Stmt{
+														&dst.ReturnStmt{
+															Results: []dst.Expr{dst.NewIdent("err")},
 														},
 													},
 												},
 											},
 											// return t.Response(c, data)
-											&ast.ReturnStmt{
-												Results: []ast.Expr{
-													&ast.CallExpr{
-														Fun: ast.NewIdent("newResponse"),
-														Args: []ast.Expr{
-															ast.NewIdent("c"),
-															ast.NewIdent("data"),
+											&dst.ReturnStmt{
+												Results: []dst.Expr{
+													&dst.CallExpr{
+														Fun: dst.NewIdent("newResponse"),
+														Args: []dst.Expr{
+															dst.NewIdent("c"),
+															dst.NewIdent("data"),
 														},
 													},
 												},
@@ -443,132 +424,127 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 	})
 
 	// Create
-	decls = append(decls, &ast.FuncDecl{
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Recv: &ast.FieldList{
-			List: []*ast.Field{
+	decls = append(decls, &dst.FuncDecl{
+		Recv: &dst.FieldList{
+			List: []*dst.Field{
 				{
-					Names: []*ast.Ident{ast.NewIdent(ins)},
-					Type:  &ast.StarExpr{X: ast.NewIdent(serviceName)},
+					Names: []*dst.Ident{dst.NewIdent(ins)},
+					Type:  &dst.StarExpr{X: dst.NewIdent(serviceName)},
 				},
 			},
 		},
-		Name: ast.NewIdent(fmt.Sprintf("Create%s", serviceName)),
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{
-				List: []*ast.Field{
+		Name: dst.NewIdent(fmt.Sprintf("Create%s", serviceName)),
+		Type: &dst.FuncType{
+			Params: &dst.FieldList{
+				List: []*dst.Field{
 					{
-						Names: []*ast.Ident{ast.NewIdent("c")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("fiber"),
-								Sel: ast.NewIdent("Ctx"),
+						Names: []*dst.Ident{dst.NewIdent("c")},
+						Type: &dst.StarExpr{
+							X: &dst.SelectorExpr{
+								X:   dst.NewIdent("fiber"),
+								Sel: dst.NewIdent("Ctx"),
 							},
 						},
 					},
 				},
 			},
-			Results: &ast.FieldList{
-				List: []*ast.Field{
-					{Type: ast.NewIdent("error")},
+			Results: &dst.FieldList{
+				List: []*dst.Field{
+					{Type: dst.NewIdent("error")},
 				},
 			},
 		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						&ast.CallExpr{
-							Fun: ast.NewIdent("newHandler"),
-							Args: []ast.Expr{
-								&ast.SelectorExpr{
-									X:   ast.NewIdent(ins),
-									Sel: ast.NewIdent("app"),
+		Body: &dst.BlockStmt{
+			List: []dst.Stmt{
+				&dst.ReturnStmt{
+					Results: []dst.Expr{
+						&dst.CallExpr{
+							Fun: dst.NewIdent("newHandler"),
+							Args: []dst.Expr{
+								&dst.SelectorExpr{
+									X:   dst.NewIdent(ins),
+									Sel: dst.NewIdent("app"),
 								},
-								ast.NewIdent("c"),
-								&ast.FuncLit{
-									Type: &ast.FuncType{
-										Params: &ast.FieldList{
-											List: []*ast.Field{
+								dst.NewIdent("c"),
+								&dst.FuncLit{
+									Type: &dst.FuncType{
+										Params: &dst.FieldList{
+											List: []*dst.Field{
 												{
-													Names: []*ast.Ident{ast.NewIdent("ctx")},
-													Type: &ast.StarExpr{
-														X: &ast.SelectorExpr{
-															X:   ast.NewIdent("context"),
-															Sel: ast.NewIdent("Context"),
+													Names: []*dst.Ident{dst.NewIdent("ctx")},
+													Type: &dst.StarExpr{
+														X: &dst.SelectorExpr{
+															X:   dst.NewIdent("context"),
+															Sel: dst.NewIdent("Context"),
 														},
 													},
 												},
 												{
-													Names: []*ast.Ident{ast.NewIdent("query")},
-													Type: &ast.StarExpr{
-														X: &ast.SelectorExpr{
-															X:   ast.NewIdent("request"),
-															Sel: ast.NewIdent("Request"),
+													Names: []*dst.Ident{dst.NewIdent("query")},
+													Type: &dst.StarExpr{
+														X: &dst.SelectorExpr{
+															X:   dst.NewIdent("request"),
+															Sel: dst.NewIdent("Request"),
 														},
 													},
 												},
 											},
 										},
-										Results: &ast.FieldList{
-											List: []*ast.Field{
-												{Type: ast.NewIdent("error")},
+										Results: &dst.FieldList{
+											List: []*dst.Field{
+												{Type: dst.NewIdent("error")},
 											},
 										},
 									},
-									Body: &ast.BlockStmt{
-										List: []ast.Stmt{
+									Body: &dst.BlockStmt{
+										List: []dst.Stmt{
 											// data, err := t.u.GetTest(ctx, trxDb, query)
-											&ast.AssignStmt{
-												Lhs: []ast.Expr{
-													ast.NewIdent("data"),
-													ast.NewIdent("err"),
+											&dst.AssignStmt{
+												Lhs: []dst.Expr{
+													dst.NewIdent("data"),
+													dst.NewIdent("err"),
 												},
 												Tok: token.DEFINE,
-												Rhs: []ast.Expr{
-													&ast.CallExpr{
-														Fun: &ast.SelectorExpr{
-															X: &ast.SelectorExpr{
-																X:   ast.NewIdent(ins),
-																Sel: ast.NewIdent("s"),
+												Rhs: []dst.Expr{
+													&dst.CallExpr{
+														Fun: &dst.SelectorExpr{
+															X: &dst.SelectorExpr{
+																X:   dst.NewIdent(ins),
+																Sel: dst.NewIdent("s"),
 															},
-															Sel: ast.NewIdent(fmt.Sprintf("Create%s", serviceName)),
+															Sel: dst.NewIdent(fmt.Sprintf("Create%s", serviceName)),
 														},
-														Args: []ast.Expr{
-															ast.NewIdent("ctx"),
-															ast.NewIdent("query"),
+														Args: []dst.Expr{
+															dst.NewIdent("ctx"),
+															dst.NewIdent("query"),
 														},
 													},
 												},
 											},
 											// if err != nil { return err }
-											&ast.IfStmt{
-												Cond: &ast.BinaryExpr{
-													X:  ast.NewIdent("err"),
+											&dst.IfStmt{
+												Cond: &dst.BinaryExpr{
+													X:  dst.NewIdent("err"),
 													Op: token.NEQ,
-													Y:  ast.NewIdent("nil"),
+													Y:  dst.NewIdent("nil"),
 												},
-												Body: &ast.BlockStmt{
-													List: []ast.Stmt{
-														&ast.ReturnStmt{
-															Results: []ast.Expr{ast.NewIdent("err")},
+												Body: &dst.BlockStmt{
+													List: []dst.Stmt{
+														&dst.ReturnStmt{
+															Results: []dst.Expr{dst.NewIdent("err")},
 														},
 													},
 												},
 											},
 											// return t.Response(c, data)
-											&ast.ReturnStmt{
-												Results: []ast.Expr{
-													&ast.CallExpr{
-														Fun: ast.NewIdent("newResponse"),
-														Args: []ast.Expr{
-															ast.NewIdent("c"),
-															ast.NewIdent("data"),
-															&ast.BasicLit{
+											&dst.ReturnStmt{
+												Results: []dst.Expr{
+													&dst.CallExpr{
+														Fun: dst.NewIdent("newResponse"),
+														Args: []dst.Expr{
+															dst.NewIdent("c"),
+															dst.NewIdent("data"),
+															&dst.BasicLit{
 																Kind:  token.INT,
 																Value: "201",
 															},
@@ -588,97 +564,92 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 	})
 
 	// Update
-	decls = append(decls, &ast.FuncDecl{
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Recv: &ast.FieldList{
-			List: []*ast.Field{
+	decls = append(decls, &dst.FuncDecl{
+		Recv: &dst.FieldList{
+			List: []*dst.Field{
 				{
-					Names: []*ast.Ident{ast.NewIdent(ins)},
-					Type:  &ast.StarExpr{X: ast.NewIdent(serviceName)},
+					Names: []*dst.Ident{dst.NewIdent(ins)},
+					Type:  &dst.StarExpr{X: dst.NewIdent(serviceName)},
 				},
 			},
 		},
-		Name: ast.NewIdent(fmt.Sprintf("Update%s", serviceName)),
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{
-				List: []*ast.Field{
+		Name: dst.NewIdent(fmt.Sprintf("Update%s", serviceName)),
+		Type: &dst.FuncType{
+			Params: &dst.FieldList{
+				List: []*dst.Field{
 					{
-						Names: []*ast.Ident{ast.NewIdent("c")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("fiber"),
-								Sel: ast.NewIdent("Ctx"),
+						Names: []*dst.Ident{dst.NewIdent("c")},
+						Type: &dst.StarExpr{
+							X: &dst.SelectorExpr{
+								X:   dst.NewIdent("fiber"),
+								Sel: dst.NewIdent("Ctx"),
 							},
 						},
 					},
 				},
 			},
-			Results: &ast.FieldList{
-				List: []*ast.Field{
-					{Type: ast.NewIdent("error")},
+			Results: &dst.FieldList{
+				List: []*dst.Field{
+					{Type: dst.NewIdent("error")},
 				},
 			},
 		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						&ast.CallExpr{
-							Fun: ast.NewIdent("newHandler"),
-							Args: []ast.Expr{
-								&ast.SelectorExpr{
-									X:   ast.NewIdent(ins),
-									Sel: ast.NewIdent("app"),
+		Body: &dst.BlockStmt{
+			List: []dst.Stmt{
+				&dst.ReturnStmt{
+					Results: []dst.Expr{
+						&dst.CallExpr{
+							Fun: dst.NewIdent("newHandler"),
+							Args: []dst.Expr{
+								&dst.SelectorExpr{
+									X:   dst.NewIdent(ins),
+									Sel: dst.NewIdent("app"),
 								},
-								ast.NewIdent("c"),
-								&ast.FuncLit{
-									Type: &ast.FuncType{
-										Params: &ast.FieldList{
-											List: []*ast.Field{
+								dst.NewIdent("c"),
+								&dst.FuncLit{
+									Type: &dst.FuncType{
+										Params: &dst.FieldList{
+											List: []*dst.Field{
 												{
-													Names: []*ast.Ident{ast.NewIdent("ctx")},
-													Type: &ast.StarExpr{
-														X: &ast.SelectorExpr{
-															X:   ast.NewIdent("context"),
-															Sel: ast.NewIdent("Context"),
+													Names: []*dst.Ident{dst.NewIdent("ctx")},
+													Type: &dst.StarExpr{
+														X: &dst.SelectorExpr{
+															X:   dst.NewIdent("context"),
+															Sel: dst.NewIdent("Context"),
 														},
 													},
 												},
 												{
-													Names: []*ast.Ident{ast.NewIdent("query")},
-													Type: &ast.StarExpr{
-														X: &ast.SelectorExpr{
-															X:   ast.NewIdent("request"),
-															Sel: ast.NewIdent("Request"),
+													Names: []*dst.Ident{dst.NewIdent("query")},
+													Type: &dst.StarExpr{
+														X: &dst.SelectorExpr{
+															X:   dst.NewIdent("request"),
+															Sel: dst.NewIdent("Request"),
 														},
 													},
 												},
 											},
 										},
-										Results: &ast.FieldList{
-											List: []*ast.Field{
-												{Type: ast.NewIdent("error")},
+										Results: &dst.FieldList{
+											List: []*dst.Field{
+												{Type: dst.NewIdent("error")},
 											},
 										},
 									},
-									Body: &ast.BlockStmt{
-										List: []ast.Stmt{
+									Body: &dst.BlockStmt{
+										List: []dst.Stmt{
 											// id := c.Params("id")
-											&ast.AssignStmt{
-												Lhs: []ast.Expr{ast.NewIdent("id")},
+											&dst.AssignStmt{
+												Lhs: []dst.Expr{dst.NewIdent("id")},
 												Tok: token.DEFINE,
-												Rhs: []ast.Expr{
-													&ast.CallExpr{
-														Fun: &ast.SelectorExpr{
-															X:   ast.NewIdent("c"),
-															Sel: ast.NewIdent("Params"),
+												Rhs: []dst.Expr{
+													&dst.CallExpr{
+														Fun: &dst.SelectorExpr{
+															X:   dst.NewIdent("c"),
+															Sel: dst.NewIdent("Params"),
 														},
-														Args: []ast.Expr{
-															&ast.BasicLit{
+														Args: []dst.Expr{
+															&dst.BasicLit{
 																Kind:  token.STRING,
 																Value: "\"id\"",
 															},
@@ -687,52 +658,52 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 												},
 											},
 											// data, err := t.u.GetTest(ctx, trxDb, query)
-											&ast.AssignStmt{
-												Lhs: []ast.Expr{
-													ast.NewIdent("data"),
-													ast.NewIdent("err"),
+											&dst.AssignStmt{
+												Lhs: []dst.Expr{
+													dst.NewIdent("data"),
+													dst.NewIdent("err"),
 												},
 												Tok: token.DEFINE,
-												Rhs: []ast.Expr{
-													&ast.CallExpr{
-														Fun: &ast.SelectorExpr{
-															X: &ast.SelectorExpr{
-																X:   ast.NewIdent(ins),
-																Sel: ast.NewIdent("s"),
+												Rhs: []dst.Expr{
+													&dst.CallExpr{
+														Fun: &dst.SelectorExpr{
+															X: &dst.SelectorExpr{
+																X:   dst.NewIdent(ins),
+																Sel: dst.NewIdent("s"),
 															},
-															Sel: ast.NewIdent(fmt.Sprintf("Update%s", serviceName)),
+															Sel: dst.NewIdent(fmt.Sprintf("Update%s", serviceName)),
 														},
-														Args: []ast.Expr{
-															ast.NewIdent("ctx"),
-															ast.NewIdent("query"),
-															ast.NewIdent("id"),
+														Args: []dst.Expr{
+															dst.NewIdent("ctx"),
+															dst.NewIdent("query"),
+															dst.NewIdent("id"),
 														},
 													},
 												},
 											},
 											// if err != nil { return err }
-											&ast.IfStmt{
-												Cond: &ast.BinaryExpr{
-													X:  ast.NewIdent("err"),
+											&dst.IfStmt{
+												Cond: &dst.BinaryExpr{
+													X:  dst.NewIdent("err"),
 													Op: token.NEQ,
-													Y:  ast.NewIdent("nil"),
+													Y:  dst.NewIdent("nil"),
 												},
-												Body: &ast.BlockStmt{
-													List: []ast.Stmt{
-														&ast.ReturnStmt{
-															Results: []ast.Expr{ast.NewIdent("err")},
+												Body: &dst.BlockStmt{
+													List: []dst.Stmt{
+														&dst.ReturnStmt{
+															Results: []dst.Expr{dst.NewIdent("err")},
 														},
 													},
 												},
 											},
 											// return t.Response(c, data)
-											&ast.ReturnStmt{
-												Results: []ast.Expr{
-													&ast.CallExpr{
-														Fun: ast.NewIdent("newResponse"),
-														Args: []ast.Expr{
-															ast.NewIdent("c"),
-															ast.NewIdent("data"),
+											&dst.ReturnStmt{
+												Results: []dst.Expr{
+													&dst.CallExpr{
+														Fun: dst.NewIdent("newResponse"),
+														Args: []dst.Expr{
+															dst.NewIdent("c"),
+															dst.NewIdent("data"),
 														},
 													},
 												},
@@ -749,97 +720,92 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 	})
 
 	// Delete
-	decls = append(decls, &ast.FuncDecl{
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Recv: &ast.FieldList{
-			List: []*ast.Field{
+	decls = append(decls, &dst.FuncDecl{
+		Recv: &dst.FieldList{
+			List: []*dst.Field{
 				{
-					Names: []*ast.Ident{ast.NewIdent(ins)},
-					Type:  &ast.StarExpr{X: ast.NewIdent(serviceName)},
+					Names: []*dst.Ident{dst.NewIdent(ins)},
+					Type:  &dst.StarExpr{X: dst.NewIdent(serviceName)},
 				},
 			},
 		},
-		Name: ast.NewIdent(fmt.Sprintf("Delete%s", serviceName)),
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{
-				List: []*ast.Field{
+		Name: dst.NewIdent(fmt.Sprintf("Delete%s", serviceName)),
+		Type: &dst.FuncType{
+			Params: &dst.FieldList{
+				List: []*dst.Field{
 					{
-						Names: []*ast.Ident{ast.NewIdent("c")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("fiber"),
-								Sel: ast.NewIdent("Ctx"),
+						Names: []*dst.Ident{dst.NewIdent("c")},
+						Type: &dst.StarExpr{
+							X: &dst.SelectorExpr{
+								X:   dst.NewIdent("fiber"),
+								Sel: dst.NewIdent("Ctx"),
 							},
 						},
 					},
 				},
 			},
-			Results: &ast.FieldList{
-				List: []*ast.Field{
-					{Type: ast.NewIdent("error")},
+			Results: &dst.FieldList{
+				List: []*dst.Field{
+					{Type: dst.NewIdent("error")},
 				},
 			},
 		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						&ast.CallExpr{
-							Fun: ast.NewIdent("newHandler"),
-							Args: []ast.Expr{
-								&ast.SelectorExpr{
-									X:   ast.NewIdent(ins),
-									Sel: ast.NewIdent("app"),
+		Body: &dst.BlockStmt{
+			List: []dst.Stmt{
+				&dst.ReturnStmt{
+					Results: []dst.Expr{
+						&dst.CallExpr{
+							Fun: dst.NewIdent("newHandler"),
+							Args: []dst.Expr{
+								&dst.SelectorExpr{
+									X:   dst.NewIdent(ins),
+									Sel: dst.NewIdent("app"),
 								},
-								ast.NewIdent("c"),
-								&ast.FuncLit{
-									Type: &ast.FuncType{
-										Params: &ast.FieldList{
-											List: []*ast.Field{
+								dst.NewIdent("c"),
+								&dst.FuncLit{
+									Type: &dst.FuncType{
+										Params: &dst.FieldList{
+											List: []*dst.Field{
 												{
-													Names: []*ast.Ident{ast.NewIdent("ctx")},
-													Type: &ast.StarExpr{
-														X: &ast.SelectorExpr{
-															X:   ast.NewIdent("context"),
-															Sel: ast.NewIdent("Context"),
+													Names: []*dst.Ident{dst.NewIdent("ctx")},
+													Type: &dst.StarExpr{
+														X: &dst.SelectorExpr{
+															X:   dst.NewIdent("context"),
+															Sel: dst.NewIdent("Context"),
 														},
 													},
 												},
 												{
-													Names: []*ast.Ident{ast.NewIdent("query")},
-													Type: &ast.StarExpr{
-														X: &ast.SelectorExpr{
-															X:   ast.NewIdent("request"),
-															Sel: ast.NewIdent("Request"),
+													Names: []*dst.Ident{dst.NewIdent("query")},
+													Type: &dst.StarExpr{
+														X: &dst.SelectorExpr{
+															X:   dst.NewIdent("request"),
+															Sel: dst.NewIdent("Request"),
 														},
 													},
 												},
 											},
 										},
-										Results: &ast.FieldList{
-											List: []*ast.Field{
-												{Type: ast.NewIdent("error")},
+										Results: &dst.FieldList{
+											List: []*dst.Field{
+												{Type: dst.NewIdent("error")},
 											},
 										},
 									},
-									Body: &ast.BlockStmt{
-										List: []ast.Stmt{
+									Body: &dst.BlockStmt{
+										List: []dst.Stmt{
 											// id := c.Params("id")
-											&ast.AssignStmt{
-												Lhs: []ast.Expr{ast.NewIdent("id")},
+											&dst.AssignStmt{
+												Lhs: []dst.Expr{dst.NewIdent("id")},
 												Tok: token.DEFINE,
-												Rhs: []ast.Expr{
-													&ast.CallExpr{
-														Fun: &ast.SelectorExpr{
-															X:   ast.NewIdent("c"),
-															Sel: ast.NewIdent("Params"),
+												Rhs: []dst.Expr{
+													&dst.CallExpr{
+														Fun: &dst.SelectorExpr{
+															X:   dst.NewIdent("c"),
+															Sel: dst.NewIdent("Params"),
 														},
-														Args: []ast.Expr{
-															&ast.BasicLit{
+														Args: []dst.Expr{
+															&dst.BasicLit{
 																Kind:  token.STRING,
 																Value: "\"id\"",
 															},
@@ -848,52 +814,52 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 												},
 											},
 											// data, err := t.u.GetTest(ctx, trxDb, query)
-											&ast.AssignStmt{
-												Lhs: []ast.Expr{
-													ast.NewIdent("err"),
+											&dst.AssignStmt{
+												Lhs: []dst.Expr{
+													dst.NewIdent("err"),
 												},
 												Tok: token.DEFINE,
-												Rhs: []ast.Expr{
-													&ast.CallExpr{
-														Fun: &ast.SelectorExpr{
-															X: &ast.SelectorExpr{
-																X:   ast.NewIdent(ins),
-																Sel: ast.NewIdent("s"),
+												Rhs: []dst.Expr{
+													&dst.CallExpr{
+														Fun: &dst.SelectorExpr{
+															X: &dst.SelectorExpr{
+																X:   dst.NewIdent(ins),
+																Sel: dst.NewIdent("s"),
 															},
-															Sel: ast.NewIdent(fmt.Sprintf("Delete%s", serviceName)),
+															Sel: dst.NewIdent(fmt.Sprintf("Delete%s", serviceName)),
 														},
-														Args: []ast.Expr{
-															ast.NewIdent("ctx"),
-															ast.NewIdent("query"),
-															ast.NewIdent("id"),
+														Args: []dst.Expr{
+															dst.NewIdent("ctx"),
+															dst.NewIdent("query"),
+															dst.NewIdent("id"),
 														},
 													},
 												},
 											},
 											// if err != nil { return err }
-											&ast.IfStmt{
-												Cond: &ast.BinaryExpr{
-													X:  ast.NewIdent("err"),
+											&dst.IfStmt{
+												Cond: &dst.BinaryExpr{
+													X:  dst.NewIdent("err"),
 													Op: token.NEQ,
-													Y:  ast.NewIdent("nil"),
+													Y:  dst.NewIdent("nil"),
 												},
-												Body: &ast.BlockStmt{
-													List: []ast.Stmt{
-														&ast.ReturnStmt{
-															Results: []ast.Expr{ast.NewIdent("err")},
+												Body: &dst.BlockStmt{
+													List: []dst.Stmt{
+														&dst.ReturnStmt{
+															Results: []dst.Expr{dst.NewIdent("err")},
 														},
 													},
 												},
 											},
 											// return t.Response(c, false, 204)
-											&ast.ReturnStmt{
-												Results: []ast.Expr{
-													&ast.CallExpr{
-														Fun: ast.NewIdent("newResponse"),
-														Args: []ast.Expr{
-															ast.NewIdent("c"),
-															ast.NewIdent("false"),
-															&ast.BasicLit{
+											&dst.ReturnStmt{
+												Results: []dst.Expr{
+													&dst.CallExpr{
+														Fun: dst.NewIdent("newResponse"),
+														Args: []dst.Expr{
+															dst.NewIdent("c"),
+															dst.NewIdent("false"),
+															&dst.BasicLit{
 																Kind:  token.INT,
 																Value: "204",
 															},
@@ -913,15 +879,18 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 	})
 
 	imports := helper.GenImport(pkgImport...)
-	decls = append([]ast.Decl{imports.GenDecl()}, decls...)
-	file := &ast.File{
-		Name:    ast.NewIdent("handler"),
-		Imports: imports.ImportSpec(),
+	decls = append([]dst.Decl{imports.GenDeclDst()}, decls...)
+	for i := range decls {
+		decls[i].Decorations().Before = dst.EmptyLine
+	}
+	file := &dst.File{
+		Name:    dst.NewIdent("handler"),
+		Imports: imports.ImportSpecDst(),
 		Decls:   decls,
 	}
 
 	res <- config2.Builder{
-		File:     file,
+		DstFile:  file,
 		Pathname: fmt.Sprintf("internal/rest/handler/%s_handler.go", s.cfg.Name),
 	}
 }
@@ -941,137 +910,132 @@ func (s *addEndpoint) addEndpointHandler(wg *sync.WaitGroup, res chan<- config2.
 	}()
 
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, s.app.Dir(fmt.Sprintf("internal/rest/handler/%s_handler.go", s.cfg.ServiceName)), nil, parser.AllErrors)
+	file, err := decorator.ParseFile(fset, s.app.Dir(fmt.Sprintf("internal/rest/handler/%s_handler.go", s.cfg.ServiceName)), nil, parser.AllErrors)
 	if err != nil {
 		resp.Err = err
 		return
 	}
 
-	file.Decls = append(file.Decls, &ast.FuncDecl{
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Recv: &ast.FieldList{
-			List: []*ast.Field{
+	file.Decls = append(file.Decls, &dst.FuncDecl{
+		Recv: &dst.FieldList{
+			List: []*dst.Field{
 				{
-					Names: []*ast.Ident{ast.NewIdent(ins)},
-					Type:  &ast.StarExpr{X: ast.NewIdent(serviceName)},
+					Names: []*dst.Ident{dst.NewIdent(ins)},
+					Type:  &dst.StarExpr{X: dst.NewIdent(serviceName)},
 				},
 			},
 		},
-		Name: ast.NewIdent(s.cfg.Name),
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{
-				List: []*ast.Field{
+		Name: dst.NewIdent(s.cfg.Name),
+		Type: &dst.FuncType{
+			Params: &dst.FieldList{
+				List: []*dst.Field{
 					{
-						Names: []*ast.Ident{ast.NewIdent("c")},
-						Type: &ast.StarExpr{
-							X: &ast.SelectorExpr{
-								X:   ast.NewIdent("fiber"),
-								Sel: ast.NewIdent("Ctx"),
+						Names: []*dst.Ident{dst.NewIdent("c")},
+						Type: &dst.StarExpr{
+							X: &dst.SelectorExpr{
+								X:   dst.NewIdent("fiber"),
+								Sel: dst.NewIdent("Ctx"),
 							},
 						},
 					},
 				},
 			},
-			Results: &ast.FieldList{
-				List: []*ast.Field{
-					{Type: ast.NewIdent("error")},
+			Results: &dst.FieldList{
+				List: []*dst.Field{
+					{Type: dst.NewIdent("error")},
 				},
 			},
 		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						&ast.CallExpr{
-							Fun: ast.NewIdent("newHandler"),
-							Args: []ast.Expr{
-								&ast.SelectorExpr{
-									X:   ast.NewIdent(ins),
-									Sel: ast.NewIdent("app"),
+		Body: &dst.BlockStmt{
+			List: []dst.Stmt{
+				&dst.ReturnStmt{
+					Results: []dst.Expr{
+						&dst.CallExpr{
+							Fun: dst.NewIdent("newHandler"),
+							Args: []dst.Expr{
+								&dst.SelectorExpr{
+									X:   dst.NewIdent(ins),
+									Sel: dst.NewIdent("app"),
 								},
-								ast.NewIdent("c"),
-								&ast.FuncLit{
-									Type: &ast.FuncType{
-										Params: &ast.FieldList{
-											List: []*ast.Field{
+								dst.NewIdent("c"),
+								&dst.FuncLit{
+									Type: &dst.FuncType{
+										Params: &dst.FieldList{
+											List: []*dst.Field{
 												{
-													Names: []*ast.Ident{ast.NewIdent("ctx")},
-													Type: &ast.StarExpr{
-														X: &ast.SelectorExpr{
-															X:   ast.NewIdent("context"),
-															Sel: ast.NewIdent("Context"),
+													Names: []*dst.Ident{dst.NewIdent("ctx")},
+													Type: &dst.StarExpr{
+														X: &dst.SelectorExpr{
+															X:   dst.NewIdent("context"),
+															Sel: dst.NewIdent("Context"),
 														},
 													},
 												},
 												{
-													Names: []*ast.Ident{ast.NewIdent("query")},
-													Type: &ast.StarExpr{
-														X: &ast.SelectorExpr{
-															X:   ast.NewIdent("request"),
-															Sel: ast.NewIdent("Request"),
+													Names: []*dst.Ident{dst.NewIdent("query")},
+													Type: &dst.StarExpr{
+														X: &dst.SelectorExpr{
+															X:   dst.NewIdent("request"),
+															Sel: dst.NewIdent("Request"),
 														},
 													},
 												},
 											},
 										},
-										Results: &ast.FieldList{
-											List: []*ast.Field{
-												{Type: ast.NewIdent("error")},
+										Results: &dst.FieldList{
+											List: []*dst.Field{
+												{Type: dst.NewIdent("error")},
 											},
 										},
 									},
-									Body: &ast.BlockStmt{
-										List: []ast.Stmt{
+									Body: &dst.BlockStmt{
+										List: []dst.Stmt{
 											// data, err := t.u.GetTest(ctx, trxDb, query)
-											&ast.AssignStmt{
-												Lhs: []ast.Expr{
-													ast.NewIdent("data"),
-													ast.NewIdent("err"),
+											&dst.AssignStmt{
+												Lhs: []dst.Expr{
+													dst.NewIdent("data"),
+													dst.NewIdent("err"),
 												},
 												Tok: token.DEFINE,
-												Rhs: []ast.Expr{
-													&ast.CallExpr{
-														Fun: &ast.SelectorExpr{
-															X: &ast.SelectorExpr{
-																X:   ast.NewIdent(ins),
-																Sel: ast.NewIdent("s"),
+												Rhs: []dst.Expr{
+													&dst.CallExpr{
+														Fun: &dst.SelectorExpr{
+															X: &dst.SelectorExpr{
+																X:   dst.NewIdent(ins),
+																Sel: dst.NewIdent("s"),
 															},
-															Sel: ast.NewIdent(s.cfg.Name),
+															Sel: dst.NewIdent(s.cfg.Name),
 														},
-														Args: []ast.Expr{
-															ast.NewIdent("ctx"),
-															ast.NewIdent("query"),
+														Args: []dst.Expr{
+															dst.NewIdent("ctx"),
+															dst.NewIdent("query"),
 														},
 													},
 												},
 											},
 											// if err != nil { return err }
-											&ast.IfStmt{
-												Cond: &ast.BinaryExpr{
-													X:  ast.NewIdent("err"),
+											&dst.IfStmt{
+												Cond: &dst.BinaryExpr{
+													X:  dst.NewIdent("err"),
 													Op: token.NEQ,
-													Y:  ast.NewIdent("nil"),
+													Y:  dst.NewIdent("nil"),
 												},
-												Body: &ast.BlockStmt{
-													List: []ast.Stmt{
-														&ast.ReturnStmt{
-															Results: []ast.Expr{ast.NewIdent("err")},
+												Body: &dst.BlockStmt{
+													List: []dst.Stmt{
+														&dst.ReturnStmt{
+															Results: []dst.Expr{dst.NewIdent("err")},
 														},
 													},
 												},
 											},
 											// return t.Response(c, data)
-											&ast.ReturnStmt{
-												Results: []ast.Expr{
-													&ast.CallExpr{
-														Fun: ast.NewIdent("newResponse"),
-														Args: []ast.Expr{
-															ast.NewIdent("c"),
-															ast.NewIdent("data"),
+											&dst.ReturnStmt{
+												Results: []dst.Expr{
+													&dst.CallExpr{
+														Fun: dst.NewIdent("newResponse"),
+														Args: []dst.Expr{
+															dst.NewIdent("c"),
+															dst.NewIdent("data"),
 														},
 													},
 												},
@@ -1087,8 +1051,12 @@ func (s *addEndpoint) addEndpointHandler(wg *sync.WaitGroup, res chan<- config2.
 		},
 	})
 
+	for i := range file.Decls {
+		file.Decls[i].Decorations().Before = dst.EmptyLine
+	}
+
 	resp = config2.Builder{
-		File:     file,
+		DstFile:  file,
 		Pathname: fmt.Sprintf("internal/rest/handler/%s_handler.go", s.cfg.ServiceName),
 	}
 }

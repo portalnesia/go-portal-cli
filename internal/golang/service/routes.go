@@ -9,11 +9,12 @@ package service
 
 import (
 	"fmt"
+	"github.com/dave/dst"
+	"github.com/dave/dst/decorator"
 	"github.com/fatih/color"
 	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
 	"go.portalnesia.com/portal-cli/pkg/helper"
 	"go.portalnesia.com/utils"
-	"go/ast"
 	"go/parser"
 	"go/token"
 	"sync"
@@ -32,58 +33,58 @@ func (s *addService) addServiceRoutes(wg *sync.WaitGroup, res chan<- config2.Bui
 	pkgImport := []string{
 		fmt.Sprintf(`"%s/internal/rest/handler"`, s.cfg.Module),
 	}
-	decls := make([]ast.Decl, 0)
+	decls := make([]dst.Decl, 0)
 
-	decls = append(decls, &ast.FuncDecl{
-		Recv: &ast.FieldList{
-			List: []*ast.Field{
+	decls = append(decls, &dst.FuncDecl{
+		Recv: &dst.FieldList{
+			List: []*dst.Field{
 				{
-					Names: []*ast.Ident{ast.NewIdent("r")},
-					Type:  &ast.StarExpr{X: ast.NewIdent("Routes")},
+					Names: []*dst.Ident{dst.NewIdent("r")},
+					Type:  &dst.StarExpr{X: dst.NewIdent("Routes")},
 				},
 			},
 		},
-		Name: ast.NewIdent(fmt.Sprintf("routes%s", serviceName)),
-		Type: &ast.FuncType{
-			Params:  &ast.FieldList{},
+		Name: dst.NewIdent(fmt.Sprintf("routes%s", serviceName)),
+		Type: &dst.FuncType{
+			Params:  &dst.FieldList{},
 			Results: nil,
 		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
+		Body: &dst.BlockStmt{
+			List: []dst.Stmt{
 				// h := handler.NewTest(r.app)
-				&ast.AssignStmt{
-					Lhs: []ast.Expr{ast.NewIdent("h")},
+				&dst.AssignStmt{
+					Lhs: []dst.Expr{dst.NewIdent("h")},
 					Tok: token.DEFINE,
-					Rhs: []ast.Expr{
-						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent("handler"),
-								Sel: ast.NewIdent(fmt.Sprintf("New%s", serviceName)),
+					Rhs: []dst.Expr{
+						&dst.CallExpr{
+							Fun: &dst.SelectorExpr{
+								X:   dst.NewIdent("handler"),
+								Sel: dst.NewIdent(fmt.Sprintf("New%s", serviceName)),
 							},
-							Args: []ast.Expr{
-								&ast.SelectorExpr{
-									X:   ast.NewIdent("r"),
-									Sel: ast.NewIdent("app"),
+							Args: []dst.Expr{
+								&dst.SelectorExpr{
+									X:   dst.NewIdent("r"),
+									Sel: dst.NewIdent("app"),
 								},
 							},
 						},
 					},
 				},
 				// route := r.fiber.Group("/v1/test")
-				&ast.AssignStmt{
-					Lhs: []ast.Expr{ast.NewIdent("route")},
+				&dst.AssignStmt{
+					Lhs: []dst.Expr{dst.NewIdent("route")},
 					Tok: token.DEFINE,
-					Rhs: []ast.Expr{
-						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X: &ast.SelectorExpr{
-									X:   ast.NewIdent("r"),
-									Sel: ast.NewIdent("fiber"),
+					Rhs: []dst.Expr{
+						&dst.CallExpr{
+							Fun: &dst.SelectorExpr{
+								X: &dst.SelectorExpr{
+									X:   dst.NewIdent("r"),
+									Sel: dst.NewIdent("fiber"),
 								},
-								Sel: ast.NewIdent("Group"),
+								Sel: dst.NewIdent("Group"),
 							},
-							Args: []ast.Expr{
-								&ast.BasicLit{
+							Args: []dst.Expr{
+								&dst.BasicLit{
 									Kind:  token.STRING,
 									Value: fmt.Sprintf(group),
 								},
@@ -91,117 +92,117 @@ func (s *addService) addServiceRoutes(wg *sync.WaitGroup, res chan<- config2.Bui
 						},
 					},
 				},
-				helper.BodyListNewLines(),
+				helper.BodyListNewLinesDst(),
 				// List
-				&ast.ExprStmt{
-					X: &ast.CallExpr{
-						Fun: &ast.SelectorExpr{
-							X:   ast.NewIdent("route"),
-							Sel: ast.NewIdent("Get"),
+				&dst.ExprStmt{
+					X: &dst.CallExpr{
+						Fun: &dst.SelectorExpr{
+							X:   dst.NewIdent("route"),
+							Sel: dst.NewIdent("Get"),
 						},
-						Args: []ast.Expr{
-							&ast.BasicLit{
+						Args: []dst.Expr{
+							&dst.BasicLit{
 								Kind:  token.STRING,
 								Value: "\"/\"",
 							},
-							&ast.SelectorExpr{
-								X:   ast.NewIdent("h"),
-								Sel: ast.NewIdent(fmt.Sprintf("List%s", serviceName)),
+							&dst.SelectorExpr{
+								X:   dst.NewIdent("h"),
+								Sel: dst.NewIdent(fmt.Sprintf("List%s", serviceName)),
 							},
 						},
 					},
 				},
 				// Get
-				&ast.ExprStmt{
-					X: &ast.CallExpr{
-						Fun: &ast.SelectorExpr{
-							X:   ast.NewIdent("route"),
-							Sel: ast.NewIdent("Get"),
+				&dst.ExprStmt{
+					X: &dst.CallExpr{
+						Fun: &dst.SelectorExpr{
+							X:   dst.NewIdent("route"),
+							Sel: dst.NewIdent("Get"),
 						},
-						Args: []ast.Expr{
-							&ast.BasicLit{
+						Args: []dst.Expr{
+							&dst.BasicLit{
 								Kind:  token.STRING,
 								Value: "\"/:id\"",
 							},
-							&ast.SelectorExpr{
-								X:   ast.NewIdent("h"),
-								Sel: ast.NewIdent(fmt.Sprintf("Get%s", serviceName)),
+							&dst.SelectorExpr{
+								X:   dst.NewIdent("h"),
+								Sel: dst.NewIdent(fmt.Sprintf("Get%s", serviceName)),
 							},
 						},
 					},
 				},
 				// Post
-				&ast.ExprStmt{
-					X: &ast.CallExpr{
-						Fun: &ast.SelectorExpr{
-							X:   ast.NewIdent("route"),
-							Sel: ast.NewIdent("Post"),
+				&dst.ExprStmt{
+					X: &dst.CallExpr{
+						Fun: &dst.SelectorExpr{
+							X:   dst.NewIdent("route"),
+							Sel: dst.NewIdent("Post"),
 						},
-						Args: []ast.Expr{
-							&ast.BasicLit{
+						Args: []dst.Expr{
+							&dst.BasicLit{
 								Kind:  token.STRING,
 								Value: "\"/\"",
 							},
-							&ast.SelectorExpr{
-								X:   ast.NewIdent("h"),
-								Sel: ast.NewIdent(fmt.Sprintf("Create%s", serviceName)),
+							&dst.SelectorExpr{
+								X:   dst.NewIdent("h"),
+								Sel: dst.NewIdent(fmt.Sprintf("Create%s", serviceName)),
 							},
 						},
 					},
 				},
 				// Put
-				&ast.ExprStmt{
-					X: &ast.CallExpr{
-						Fun: &ast.SelectorExpr{
-							X:   ast.NewIdent("route"),
-							Sel: ast.NewIdent("Put"),
+				&dst.ExprStmt{
+					X: &dst.CallExpr{
+						Fun: &dst.SelectorExpr{
+							X:   dst.NewIdent("route"),
+							Sel: dst.NewIdent("Put"),
 						},
-						Args: []ast.Expr{
-							&ast.BasicLit{
+						Args: []dst.Expr{
+							&dst.BasicLit{
 								Kind:  token.STRING,
 								Value: "\"/:id\"",
 							},
-							&ast.SelectorExpr{
-								X:   ast.NewIdent("h"),
-								Sel: ast.NewIdent(fmt.Sprintf("Update%s", serviceName)),
+							&dst.SelectorExpr{
+								X:   dst.NewIdent("h"),
+								Sel: dst.NewIdent(fmt.Sprintf("Update%s", serviceName)),
 							},
 						},
 					},
 				},
 				// Patch
-				&ast.ExprStmt{
-					X: &ast.CallExpr{
-						Fun: &ast.SelectorExpr{
-							X:   ast.NewIdent("route"),
-							Sel: ast.NewIdent("Patch"),
+				&dst.ExprStmt{
+					X: &dst.CallExpr{
+						Fun: &dst.SelectorExpr{
+							X:   dst.NewIdent("route"),
+							Sel: dst.NewIdent("Patch"),
 						},
-						Args: []ast.Expr{
-							&ast.BasicLit{
+						Args: []dst.Expr{
+							&dst.BasicLit{
 								Kind:  token.STRING,
 								Value: "\"/:id\"",
 							},
-							&ast.SelectorExpr{
-								X:   ast.NewIdent("h"),
-								Sel: ast.NewIdent(fmt.Sprintf("Update%s", serviceName)),
+							&dst.SelectorExpr{
+								X:   dst.NewIdent("h"),
+								Sel: dst.NewIdent(fmt.Sprintf("Update%s", serviceName)),
 							},
 						},
 					},
 				},
 				// Delete
-				&ast.ExprStmt{
-					X: &ast.CallExpr{
-						Fun: &ast.SelectorExpr{
-							X:   ast.NewIdent("route"),
-							Sel: ast.NewIdent("Delete"),
+				&dst.ExprStmt{
+					X: &dst.CallExpr{
+						Fun: &dst.SelectorExpr{
+							X:   dst.NewIdent("route"),
+							Sel: dst.NewIdent("Delete"),
 						},
-						Args: []ast.Expr{
-							&ast.BasicLit{
+						Args: []dst.Expr{
+							&dst.BasicLit{
 								Kind:  token.STRING,
 								Value: "\"/:id\"",
 							},
-							&ast.SelectorExpr{
-								X:   ast.NewIdent("h"),
-								Sel: ast.NewIdent(fmt.Sprintf("Delete%s", serviceName)),
+							&dst.SelectorExpr{
+								X:   dst.NewIdent("h"),
+								Sel: dst.NewIdent(fmt.Sprintf("Delete%s", serviceName)),
 							},
 						},
 					},
@@ -211,20 +212,20 @@ func (s *addService) addServiceRoutes(wg *sync.WaitGroup, res chan<- config2.Bui
 	})
 
 	imports := helper.GenImport(pkgImport...)
-	decls = append([]ast.Decl{imports.GenDecl()}, decls...)
-	file := &ast.File{
-		Name:    ast.NewIdent("routes"),
-		Imports: imports.ImportSpec(),
+	decls = append([]dst.Decl{imports.GenDeclDst()}, decls...)
+	file := &dst.File{
+		Name:    dst.NewIdent("routes"),
+		Imports: imports.ImportSpecDst(),
 		Decls:   decls,
 	}
 
 	res <- config2.Builder{
-		File:     file,
+		DstFile:  file,
 		Pathname: fmt.Sprintf("internal/rest/routes/%s_route.go", s.cfg.Name),
 	}
 }
 
-func (s *addService) addToRoutes(wg *sync.WaitGroup, res chan<- config2.Builder) {
+func (s *addService) addToRoutesDst(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 
 	serviceName := utils.Ucwords(s.cfg.Name)
@@ -236,7 +237,7 @@ func (s *addService) addToRoutes(wg *sync.WaitGroup, res chan<- config2.Builder)
 	}()
 
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, s.app.Dir("internal/rest/routes/routes.go"), nil, parser.AllErrors)
+	file, err := decorator.ParseFile(fset, s.app.Dir("internal/rest/routes/routes.go"), nil, parser.AllErrors)
 	if err != nil {
 		resp.Err = err
 		return
@@ -244,23 +245,23 @@ func (s *addService) addToRoutes(wg *sync.WaitGroup, res chan<- config2.Builder)
 	var found bool
 
 	for _, decl := range file.Decls {
-		if funcDecl, ok := decl.(*ast.FuncDecl); ok {
+		if funcDecl, ok := decl.(*dst.FuncDecl); ok {
 			if funcDecl.Name.Name == "initRoutes" {
 				_, _ = color.New(color.FgBlue).Printf("Add to routes\n")
 				found = true
 				// Tambahkan routes
-				stmt := &ast.ExprStmt{
-					X: &ast.CallExpr{
-						Fun: &ast.SelectorExpr{
-							X:   ast.NewIdent("r"),
-							Sel: ast.NewIdent(fmt.Sprintf("routes%s", serviceName)),
+				stmt := &dst.ExprStmt{
+					X: &dst.CallExpr{
+						Fun: &dst.SelectorExpr{
+							X:   dst.NewIdent("r"),
+							Sel: dst.NewIdent(fmt.Sprintf("routes%s", serviceName)),
 						},
 					},
 				}
 
 				// Append ke Body.List
 				funcDecl.Body.List = append(funcDecl.Body.List, stmt)
-				resp.File = file
+				resp.DstFile = file
 				resp.Pathname = "internal/rest/routes/routes.go"
 				break
 			}
@@ -286,51 +287,51 @@ func (s *addEndpoint) addEndpointRoutes(wg *sync.WaitGroup, res chan<- config2.B
 	}()
 
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, s.app.Dir(fmt.Sprintf("internal/rest/routes/%s_route.go", s.cfg.ServiceName)), nil, parser.AllErrors)
+	file, err := decorator.ParseFile(fset, s.app.Dir(fmt.Sprintf("internal/rest/routes/%s_route.go", s.cfg.ServiceName)), nil, parser.AllErrors)
 	if err != nil {
 		resp.Err = err
 		return
 	}
 
 	decls := file.Decls[len(file.Decls)-1]
-	funcDecl, ok := decls.(*ast.FuncDecl)
+	funcDecl, ok := decls.(*dst.FuncDecl)
 	if !ok {
 		resp.Err = fmt.Errorf("invalid routes: function routes%s not found", serviceName)
 		return
 	}
-	funcDecl.Body.List = append(funcDecl.Body.List, &ast.ExprStmt{
-		X: &ast.CallExpr{
-			Fun: &ast.SelectorExpr{
-				X:   ast.NewIdent("route"),
-				Sel: ast.NewIdent(s.cfg.Method),
+	funcDecl.Body.List = append(funcDecl.Body.List, &dst.ExprStmt{
+		X: &dst.CallExpr{
+			Fun: &dst.SelectorExpr{
+				X:   dst.NewIdent("route"),
+				Sel: dst.NewIdent(s.cfg.Method),
 			},
-			Args: []ast.Expr{
-				&ast.BasicLit{
+			Args: []dst.Expr{
+				&dst.BasicLit{
 					Kind:  token.STRING,
 					Value: fmt.Sprintf(`"%s"`, s.cfg.Path),
 				},
-				&ast.SelectorExpr{
-					X:   ast.NewIdent("h"),
-					Sel: ast.NewIdent(s.cfg.Name),
+				&dst.SelectorExpr{
+					X:   dst.NewIdent("h"),
+					Sel: dst.NewIdent(s.cfg.Name),
 				},
 			},
 		},
 	})
 	if s.cfg.Method == "Put" {
-		funcDecl.Body.List = append(funcDecl.Body.List, &ast.ExprStmt{
-			X: &ast.CallExpr{
-				Fun: &ast.SelectorExpr{
-					X:   ast.NewIdent("route"),
-					Sel: ast.NewIdent("Patch"),
+		funcDecl.Body.List = append(funcDecl.Body.List, &dst.ExprStmt{
+			X: &dst.CallExpr{
+				Fun: &dst.SelectorExpr{
+					X:   dst.NewIdent("route"),
+					Sel: dst.NewIdent("Patch"),
 				},
-				Args: []ast.Expr{
-					&ast.BasicLit{
+				Args: []dst.Expr{
+					&dst.BasicLit{
 						Kind:  token.STRING,
 						Value: fmt.Sprintf(`"%s"`, s.cfg.Path),
 					},
-					&ast.SelectorExpr{
-						X:   ast.NewIdent("h"),
-						Sel: ast.NewIdent(s.cfg.Name),
+					&dst.SelectorExpr{
+						X:   dst.NewIdent("h"),
+						Sel: dst.NewIdent(s.cfg.Name),
 					},
 				},
 			},
@@ -340,7 +341,7 @@ func (s *addEndpoint) addEndpointRoutes(wg *sync.WaitGroup, res chan<- config2.B
 	file.Decls[len(file.Decls)-1] = funcDecl
 
 	resp = config2.Builder{
-		File:     file,
+		DstFile:  file,
 		Pathname: fmt.Sprintf("internal/rest/routes/%s_route.go", s.cfg.ServiceName),
 	}
 }

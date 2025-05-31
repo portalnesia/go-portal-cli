@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
 package repository
 
 import (
@@ -11,18 +18,20 @@ type DataModel interface {
 }
 
 type CrudRepository[Model DataModel, TypeID any, Filter request.RequestInterface] interface {
-	FindOne(ctx ContextInterface, query *request.Request, id TypeID, opts ...Options) (resp *Model, err error)
+	FindOne(ctx ContextInterface, query Filter, id TypeID, opts ...Options) (resp *Model, err error)
 	FindAll(ctx ContextInterface, query Filter, opts ...Options) (resp []Model, err error)
-	Create(ctx ContextInterface, query *request.Request, data *Model, opts ...Options) (err error)
-	Update(ctx ContextInterface, query *request.Request, data *Model, opts ...Options) (err error)
-	Delete(ctx ContextInterface, query *request.Request, id TypeID, opts ...Options) (err error)
+	Create(ctx ContextInterface, query Filter, data *Model, opts ...Options) (err error)
+	Update(ctx ContextInterface, query Filter, data *Model, opts ...Options) (err error)
+	Delete(ctx ContextInterface, query Filter, id TypeID, opts ...Options) (err error)
+	Count(ctx ContextInterface, opts ...Options) (total int64, err error)
+	ManualFirst(ctx ContextInterface, opts ...Options) (resp *Model, err error)
 }
 
 type crudRepository[Model DataModel, TypeID any, Filter request.RequestInterface] struct {
 	base
 }
 
-func (r crudRepository[Model, TypeID, Filter]) FindOne(ctx ContextInterface, query *request.Request, id TypeID, opts ...Options) (resp *Model, err error) {
+func (r crudRepository[Model, TypeID, Filter]) FindOne(ctx ContextInterface, _ Filter, id TypeID, opts ...Options) (resp *Model, err error) {
 	db := r.getDatabase(ctx, opts...)
 
 	if err = db.Where("id = ?", id).First(&resp).Error; err != nil {
@@ -52,24 +61,40 @@ func (r crudRepository[Model, TypeID, Filter]) FindAll(ctx ContextInterface, que
 		}
 	}
 
+	if len(resp) == 0 {
+		resp = make([]Model, 0)
+	}
+
 	return
 }
 
-func (r crudRepository[Model, TypeID, Filter]) Create(ctx ContextInterface, query *request.Request, data *Model, opts ...Options) (err error) {
+func (r crudRepository[Model, TypeID, Filter]) Create(ctx ContextInterface, _ Filter, data *Model, opts ...Options) (err error) {
 	db := r.getDatabase(ctx, opts...)
 
 	return db.Create(&data).Error
 }
 
-func (r crudRepository[Model, TypeID, Filter]) Update(ctx ContextInterface, query *request.Request, data *Model, opts ...Options) (err error) {
+func (r crudRepository[Model, TypeID, Filter]) Update(ctx ContextInterface, _ Filter, data *Model, opts ...Options) (err error) {
 	db := r.getDatabase(ctx, opts...)
 
 	return db.Save(&data).Error
 }
 
-func (r crudRepository[Model, TypeID, Filter]) Delete(ctx ContextInterface, query *request.Request, id TypeID, opts ...Options) (err error) {
+func (r crudRepository[Model, TypeID, Filter]) Delete(ctx ContextInterface, _ Filter, id TypeID, opts ...Options) (err error) {
 	var tmp Model
 	db := r.getDatabase(ctx, opts...)
 
 	return db.Where("id = ?", id).Delete(&tmp).Error
+}
+
+func (r crudRepository[Model, TypeID, Filter]) Count(ctx ContextInterface, opts ...Options) (total int64, err error) {
+	var tmp Model
+	err = r.getDatabase(ctx, opts...).Model(&tmp).Count(&total).Error
+	return
+}
+
+func (r crudRepository[Model, TypeID, Filter]) ManualFirst(ctx ContextInterface, opts ...Options) (resp *Model, err error) {
+	var tmp Model
+	err = r.getDatabase(ctx, opts...).Model(&tmp).First(&resp).Error
+	return
 }

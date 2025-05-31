@@ -8,16 +8,22 @@
 package helper
 
 import (
+	"github.com/dave/dst"
 	"go/ast"
 	"go/token"
 )
 
 type Imports struct {
-	imports []*ast.ImportSpec
+	imports   []*ast.ImportSpec
+	importDst []*dst.ImportSpec
 }
 
 func (i *Imports) ImportSpec() []*ast.ImportSpec {
 	return i.imports
+}
+
+func (i *Imports) ImportSpecDst() []*dst.ImportSpec {
+	return i.importDst
 }
 
 func (i *Imports) GenDecl() *ast.GenDecl {
@@ -36,6 +42,22 @@ func (i *Imports) GenDecl() *ast.GenDecl {
 	}
 }
 
+func (i *Imports) GenDeclDst() *dst.GenDecl {
+	if i.imports == nil || len(i.imports) <= 0 {
+		return nil
+	}
+
+	var tmp []dst.Spec
+	for _, im := range i.importDst {
+		tmp = append(tmp, im)
+	}
+
+	return &dst.GenDecl{
+		Tok:   token.IMPORT,
+		Specs: tmp,
+	}
+}
+
 func GenImport(
 	pkg ...string,
 ) Imports {
@@ -44,14 +66,19 @@ func GenImport(
 	}
 
 	imports := make([]*ast.ImportSpec, 0)
+	importDst := make([]*dst.ImportSpec, 0)
 
 	for _, p := range pkg {
 		imports = append(imports, &ast.ImportSpec{
 			Path: &ast.BasicLit{Kind: token.STRING, Value: p},
 		})
+		importDst = append(importDst, &dst.ImportSpec{
+			Path: &dst.BasicLit{Kind: token.STRING, Value: p},
+		})
 	}
 
 	return Imports{
-		imports: imports,
+		imports:   imports,
+		importDst: importDst,
 	}
 }

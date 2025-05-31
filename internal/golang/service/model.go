@@ -9,10 +9,10 @@ package service
 
 import (
 	"fmt"
+	"github.com/dave/dst"
 	"github.com/fatih/color"
 	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
 	"go.portalnesia.com/utils"
-	"go/ast"
 	"go/token"
 	"strings"
 	"sync"
@@ -24,54 +24,44 @@ func (s *addRepository) addRepositoryModel(wg *sync.WaitGroup, res chan<- config
 	_, _ = color.New(color.FgBlue).Printf("Generating model\n")
 	serviceName := strings.ReplaceAll(utils.Ucwords(strings.ReplaceAll(s.cfg.Name, "_", " ")), " ", "")
 
-	decls := make([]ast.Decl, 0)
+	decls := make([]dst.Decl, 0)
 
 	// type User struct{}
-	decls = append(decls, &ast.GenDecl{
+	decls = append(decls, &dst.GenDecl{
 		Tok: token.TYPE,
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Specs: []ast.Spec{
-			&ast.TypeSpec{
-				Name: ast.NewIdent(serviceName),
-				Type: &ast.StructType{
-					Fields: &ast.FieldList{},
+		Specs: []dst.Spec{
+			&dst.TypeSpec{
+				Name: dst.NewIdent(serviceName),
+				Type: &dst.StructType{
+					Fields: &dst.FieldList{},
 				},
 			},
 		},
 	})
 
 	// func (User) TableName() string { return "user" }
-	decls = append(decls, &ast.FuncDecl{
-		Recv: &ast.FieldList{
-			List: []*ast.Field{
+	decls = append(decls, &dst.FuncDecl{
+		Recv: &dst.FieldList{
+			List: []*dst.Field{
 				{
-					Type: ast.NewIdent(serviceName),
+					Type: dst.NewIdent(serviceName),
 				},
 			},
 		},
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Name: ast.NewIdent("TableName"),
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{},
-			Results: &ast.FieldList{
-				List: []*ast.Field{
-					{Type: ast.NewIdent("string")},
+		Name: dst.NewIdent("TableName"),
+		Type: &dst.FuncType{
+			Params: &dst.FieldList{},
+			Results: &dst.FieldList{
+				List: []*dst.Field{
+					{Type: dst.NewIdent("string")},
 				},
 			},
 		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						&ast.BasicLit{
+		Body: &dst.BlockStmt{
+			List: []dst.Stmt{
+				&dst.ReturnStmt{
+					Results: []dst.Expr{
+						&dst.BasicLit{
 							Kind:  token.STRING,
 							Value: fmt.Sprintf(`"%s"`, strings.ToLower(s.cfg.Name)),
 						},
@@ -82,43 +72,38 @@ func (s *addRepository) addRepositoryModel(wg *sync.WaitGroup, res chan<- config
 	})
 
 	// func (User) GetDefaultOrder() []string { return []string{"created_at", "desc"} }
-	decls = append(decls, &ast.FuncDecl{
-		Recv: &ast.FieldList{
-			List: []*ast.Field{
+	decls = append(decls, &dst.FuncDecl{
+		Recv: &dst.FieldList{
+			List: []*dst.Field{
 				{
-					Type: ast.NewIdent(serviceName),
+					Type: dst.NewIdent(serviceName),
 				},
 			},
 		},
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Name: ast.NewIdent("GetDefaultOrder"),
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{},
-			Results: &ast.FieldList{
-				List: []*ast.Field{
+		Name: dst.NewIdent("GetDefaultOrder"),
+		Type: &dst.FuncType{
+			Params: &dst.FieldList{},
+			Results: &dst.FieldList{
+				List: []*dst.Field{
 					{
-						Type: &ast.ArrayType{
-							Elt: ast.NewIdent("string"),
+						Type: &dst.ArrayType{
+							Elt: dst.NewIdent("string"),
 						},
 					},
 				},
 			},
 		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						&ast.CompositeLit{
-							Type: &ast.ArrayType{
-								Elt: ast.NewIdent("string"),
+		Body: &dst.BlockStmt{
+			List: []dst.Stmt{
+				&dst.ReturnStmt{
+					Results: []dst.Expr{
+						&dst.CompositeLit{
+							Type: &dst.ArrayType{
+								Elt: dst.NewIdent("string"),
 							},
-							Elts: []ast.Expr{
-								&ast.BasicLit{Kind: token.STRING, Value: `"created_at"`},
-								&ast.BasicLit{Kind: token.STRING, Value: `"desc"`},
+							Elts: []dst.Expr{
+								&dst.BasicLit{Kind: token.STRING, Value: `"created_at"`},
+								&dst.BasicLit{Kind: token.STRING, Value: `"desc"`},
 							},
 						},
 					},
@@ -128,49 +113,44 @@ func (s *addRepository) addRepositoryModel(wg *sync.WaitGroup, res chan<- config
 	})
 
 	// func (User) GetAvailableOrder() [][]string { return [][]string{{"created_at", "desc"}} }
-	decls = append(decls, &ast.FuncDecl{
-		Recv: &ast.FieldList{
-			List: []*ast.Field{
+	decls = append(decls, &dst.FuncDecl{
+		Recv: &dst.FieldList{
+			List: []*dst.Field{
 				{
-					Type: ast.NewIdent(serviceName),
+					Type: dst.NewIdent(serviceName),
 				},
 			},
 		},
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
-		Name: ast.NewIdent("GetAvailableOrder"),
-		Type: &ast.FuncType{
-			Params: &ast.FieldList{},
-			Results: &ast.FieldList{
-				List: []*ast.Field{
+		Name: dst.NewIdent("GetAvailableOrder"),
+		Type: &dst.FuncType{
+			Params: &dst.FieldList{},
+			Results: &dst.FieldList{
+				List: []*dst.Field{
 					{
-						Type: &ast.ArrayType{
-							Elt: &ast.ArrayType{
-								Elt: ast.NewIdent("string"),
+						Type: &dst.ArrayType{
+							Elt: &dst.ArrayType{
+								Elt: dst.NewIdent("string"),
 							},
 						},
 					},
 				},
 			},
 		},
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						&ast.CompositeLit{
-							Type: &ast.ArrayType{
-								Elt: &ast.ArrayType{
-									Elt: ast.NewIdent("string"),
+		Body: &dst.BlockStmt{
+			List: []dst.Stmt{
+				&dst.ReturnStmt{
+					Results: []dst.Expr{
+						&dst.CompositeLit{
+							Type: &dst.ArrayType{
+								Elt: &dst.ArrayType{
+									Elt: dst.NewIdent("string"),
 								},
 							},
-							Elts: []ast.Expr{
-								&ast.CompositeLit{
-									Elts: []ast.Expr{
-										&ast.BasicLit{Kind: token.STRING, Value: `"created_at"`},
-										&ast.BasicLit{Kind: token.STRING, Value: `"desc"`},
+							Elts: []dst.Expr{
+								&dst.CompositeLit{
+									Elts: []dst.Expr{
+										&dst.BasicLit{Kind: token.STRING, Value: `"created_at"`},
+										&dst.BasicLit{Kind: token.STRING, Value: `"desc"`},
 									},
 								},
 							},
@@ -181,13 +161,17 @@ func (s *addRepository) addRepositoryModel(wg *sync.WaitGroup, res chan<- config
 		},
 	})
 
-	file := &ast.File{
-		Name:  ast.NewIdent("model"),
+	for i := range decls {
+		decls[i].Decorations().Before = dst.EmptyLine
+	}
+
+	file := &dst.File{
+		Name:  dst.NewIdent("model"),
 		Decls: decls,
 	}
 
 	res <- config2.Builder{
-		File:     file,
+		DstFile:  file,
 		Pathname: fmt.Sprintf("internal/model/%s.go", strings.ToLower(s.cfg.Name)),
 	}
 }

@@ -10,6 +10,7 @@ package helper
 import (
 	"bufio"
 	"fmt"
+	"github.com/dave/dst"
 	"go/ast"
 	"go/token"
 	"os"
@@ -19,6 +20,15 @@ import (
 func BodyListNewLines() ast.Stmt {
 	return &ast.ExprStmt{
 		X: &ast.BasicLit{
+			Kind:  token.STRING,
+			Value: ``,
+		}, // dummy expression, tidak valid
+	}
+}
+
+func BodyListNewLinesDst() dst.Stmt {
+	return &dst.ExprStmt{
+		X: &dst.BasicLit{
 			Kind:  token.STRING,
 			Value: ``,
 		}, // dummy expression, tidak valid

@@ -35,8 +35,10 @@ func AddService(app *config.App, cfg config2.AddServiceConfig) ([]config2.Builde
 	go c.addServiceHandler(wg, respChan)
 	go c.addServiceUsecase(wg, respChan)
 	go c.addServiceRoutes(wg, respChan)
+
 	//go c.addServiceRepository(wg, respChan)
-	go c.addToRoutes(wg, respChan)
+	//go c.addToRoutes(wg, respChan)
+	go c.addToRoutesDst(wg, respChan)
 	//go c.addToRepository(wg, respChan)
 
 	wg.Wait()

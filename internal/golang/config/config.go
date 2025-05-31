@@ -8,6 +8,7 @@
 package config
 
 import (
+	"github.com/dave/dst"
 	"go/ast"
 )
 
@@ -46,4 +47,5 @@ type Builder struct {
 	Pathname string
 	Static   []byte
 	Err      error
+	DstFile  *dst.File
 }
