@@ -25,7 +25,7 @@ func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- conf
 	defer wg.Done()
 
 	serviceName := strings.ReplaceAll(utils.Ucwords(strings.ReplaceAll(s.cfg.Name, "_", " ")), " ", "")
-	lowerName := strings.ReplaceAll(helper.FirstToLower(strings.ReplaceAll(s.cfg.Name, "_", " ")), " ", "")
+	lowerName := helper.FirstToLower(serviceName)
 	structName := fmt.Sprintf("%sRepository", lowerName)
 
 	_, _ = color.New(color.FgBlue).Printf("Generating repository\n")
@@ -183,7 +183,9 @@ func (s *addRepository) addToRepository(wg *sync.WaitGroup, res chan<- config2.B
 	serviceName := strings.ReplaceAll(utils.Ucwords(strings.ReplaceAll(s.cfg.Name, "_", " ")), " ", "")
 
 	// Parse file routes
-	resp := config2.Builder{}
+	resp := config2.Builder{
+		WithoutComment: true,
+	}
 	defer func() {
 		res <- resp
 	}()
@@ -223,6 +225,9 @@ func (s *addRepository) addToRepository(wg *sync.WaitGroup, res chan<- config2.B
 									Args: []dst.Expr{dst.NewIdent("bs")},
 								},
 							})
+							for i := range compositLit.Elts {
+								compositLit.Elts[i].Decorations().Before = dst.NewLine
+							}
 						}
 					}
 				}

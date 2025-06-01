@@ -42,10 +42,11 @@ type AddRepositoryConfig struct {
 }
 
 type Builder struct {
-	Comment  []string
-	File     *ast.File
-	Pathname string
-	Static   []byte
-	Err      error
-	DstFile  *dst.File
+	Comment        []string
+	File           *ast.File
+	Pathname       string
+	Static         []byte
+	Err            error
+	DstFile        *dst.File
+	WithoutComment bool
 }

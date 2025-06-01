@@ -231,7 +231,9 @@ func (s *addService) addToRoutesDst(wg *sync.WaitGroup, res chan<- config2.Build
 	serviceName := utils.Ucwords(s.cfg.Name)
 
 	// Parse file routes
-	resp := config2.Builder{}
+	resp := config2.Builder{
+		WithoutComment: true,
+	}
 	defer func() {
 		res <- resp
 	}()

@@ -49,7 +49,9 @@ func (g *Golang) Build(builder []config2.Builder) error {
 			// Render AST ke source
 			var buf bytes.Buffer
 
-			buf.WriteString(helper.GenCopyright(b.Comment...))
+			if !b.WithoutComment {
+				buf.WriteString(helper.GenCopyright(b.Comment...))
+			}
 
 			printerConfig := &printer.Config{
 				Mode:     printer.UseSpaces | printer.TabIndent,
@@ -65,7 +67,9 @@ func (g *Golang) Build(builder []config2.Builder) error {
 			}
 		} else if b.DstFile != nil {
 			var buf bytes.Buffer
-			buf.WriteString(helper.GenCopyright(b.Comment...))
+			if !b.WithoutComment {
+				buf.WriteString(helper.GenCopyright(b.Comment...))
+			}
 
 			if err = decorator.Fprint(&buf, b.DstFile); err != nil {
 				return fmt.Errorf("failed to print file: %s", err.Error())
