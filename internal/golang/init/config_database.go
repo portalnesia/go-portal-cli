@@ -476,13 +476,21 @@ func (c *initType) initConfigDatabase(wg *sync.WaitGroup, res chan<- config2.Bui
 	imports := helper.GenImport(pkgImport...)
 	decls = append([]ast.Decl{imports.GenDecl()}, decls...)
 	file := &ast.File{
+		Package: token.Pos(1),
 		Name:    ast.NewIdent("config"),
 		Imports: imports.ImportSpec(),
 		Decls:   decls,
 	}
 
+	f, err := helper.AstToDst(file)
+	if err != nil {
+		res <- config2.Builder{
+			Err: err,
+		}
+		return
+	}
 	res <- config2.Builder{
-		File:     file,
+		DstFile:  f,
 		Pathname: "internal/config/database.go",
 	}
 }

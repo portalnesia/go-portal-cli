@@ -9,11 +9,10 @@ package config
 
 import (
 	"github.com/coreos/go-semver/semver"
-    "github.com/gofiber/fiber/v2"
-    "github.com/gofiber/fiber/v2/middleware/session"
-    "github.com/redis/go-redis/v9"
+    {{IMPORT_IF_REDIS}}
     pncrypto "go.portalnesia.com/crypto"
     "gorm.io/gorm"
+    "APP_NAME/internal/repository"
 )
 
 func (a *app) IsProduction() bool {
@@ -40,17 +39,7 @@ func (a *app) Log() *Logger {
 	return a.log
 }
 
-func (a *app) Redis() redis.UniversalClient {
-	return a.redis
-}
-
-func (a *app) FiberStorage() fiber.Storage {
-	return a.fiberStorage
-}
-
-func (a *app) SessionStore() *session.Store {
-	return a.sessionStore
-}
+{{IF_REDIS}}
 
 func Version() semver.Version {
 	return *version

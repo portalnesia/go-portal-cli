@@ -94,7 +94,7 @@ func (c *initType) initCmdStart(wg *sync.WaitGroup, res chan<- config2.Builder) 
 			Rhs: []ast.Expr{
 				&ast.CallExpr{
 					Fun: &ast.SelectorExpr{
-						X:   ast.NewIdent("server"),
+						X:   ast.NewIdent("rest"),
 						Sel: ast.NewIdent("New"),
 					},
 					Args: []ast.Expr{ast.NewIdent("apps")},
@@ -403,8 +403,15 @@ func (c *initType) initCmdStart(wg *sync.WaitGroup, res chan<- config2.Builder) 
 		Decls:   decls,
 	}
 
+	f, err := helper.AstToDst(file)
+	if err != nil {
+		res <- config2.Builder{
+			Err: err,
+		}
+		return
+	}
 	res <- config2.Builder{
-		File:     file,
+		DstFile:  f,
 		Pathname: "cmd/rest.go",
 	}
 }

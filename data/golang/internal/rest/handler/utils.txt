@@ -46,9 +46,7 @@ func newHandler(app config.App, c *fiber.Ctx, handler func(ctx *context.Context,
 
 	errorTrx := handler(ctx, &req)
 
-	if sess, errSess := app.SessionStore().Get(c); errSess == nil {
-		_ = sess.Save()
-	}
+    {{IF_REDIS}}
 
 	if tmp := c.Locals("remove_tmp_file"); tmp != nil {
 		if tmpPaths, ok := tmp.([]string); ok && len(tmpPaths) > 0 {

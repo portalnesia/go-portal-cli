@@ -23,7 +23,6 @@ func (c *initType) initConfigApp(wg *sync.WaitGroup, res chan<- config2.Builder)
 	_, _ = color.New(color.FgBlue).Printf("Generating internal/config/app.go\n")
 	pkgImport := []string{
 		`"embed"`,
-		`"github.com/gofiber/fiber/v2"`,
 		`"github.com/rs/zerolog"`,
 		`"github.com/spf13/viper"`,
 		`"github.com/subosito/gotenv"`,
@@ -47,6 +46,7 @@ func (c *initType) initConfigApp(wg *sync.WaitGroup, res chan<- config2.Builder)
 
 	if c.cfg.Redis {
 		pkgImport = append(pkgImport,
+			`"github.com/gofiber/fiber/v2"`,
 			`fiberredis "github.com/gofiber/storage/redis/v3"`,
 			`"github.com/gofiber/fiber/v2/middleware/session"`,
 			`"github.com/redis/go-redis/v9"`,
@@ -61,8 +61,15 @@ func (c *initType) initConfigApp(wg *sync.WaitGroup, res chan<- config2.Builder)
 		Decls:   decls,
 	}
 
+	f, err := helper.AstToDst(file)
+	if err != nil {
+		res <- config2.Builder{
+			Err: err,
+		}
+		return
+	}
 	res <- config2.Builder{
-		File:     file,
+		DstFile:  f,
 		Pathname: "internal/config/app.go",
 	}
 }
@@ -1348,6 +1355,158 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 	})
 
 	//interface App
+	interfaceAppListField := []*ast.Field{
+		{
+			Names: []*ast.Ident{ast.NewIdent("IsProduction")},
+			Type: &ast.FuncType{
+				Params:  &ast.FieldList{},
+				Results: &ast.FieldList{List: []*ast.Field{{Type: ast.NewIdent("bool")}}},
+			},
+		},
+		{
+			Names: []*ast.Ident{ast.NewIdent("Embed")},
+			Type: &ast.FuncType{
+				Params:  &ast.FieldList{},
+				Results: &ast.FieldList{List: []*ast.Field{{Type: ast.NewIdent("Embed")}}},
+			},
+		},
+		{
+			Names: []*ast.Ident{ast.NewIdent("Crypto")},
+			Type: &ast.FuncType{
+				Params: &ast.FieldList{},
+				Results: &ast.FieldList{
+					List: []*ast.Field{
+						{
+							Type: &ast.SelectorExpr{
+								X: ast.NewIdent("pncrypto"), Sel: ast.NewIdent("Crypto"),
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Names: []*ast.Ident{ast.NewIdent("Log")},
+			Type: &ast.FuncType{
+				Params: &ast.FieldList{},
+				Results: &ast.FieldList{
+					List: []*ast.Field{{Type: &ast.StarExpr{X: ast.NewIdent("Logger")}}},
+				},
+			},
+		},
+		{
+			Names: []*ast.Ident{ast.NewIdent("DB")},
+			Type: &ast.FuncType{
+				Params: &ast.FieldList{},
+				Results: &ast.FieldList{
+					List: []*ast.Field{
+						{
+							Type: &ast.StarExpr{
+								X: &ast.SelectorExpr{
+									X: ast.NewIdent("gorm"), Sel: ast.NewIdent("DB"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Names: []*ast.Ident{ast.NewIdent("Repository")},
+			Type: &ast.FuncType{
+				Params: &ast.FieldList{},
+				Results: &ast.FieldList{
+					List: []*ast.Field{
+						{
+							Type: &ast.SelectorExpr{
+								X: ast.NewIdent("repository"), Sel: ast.NewIdent("Registry"),
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Names: []*ast.Ident{ast.NewIdent("Close")},
+			Type: &ast.FuncType{
+				Params:  &ast.FieldList{},
+				Results: nil,
+			},
+		},
+	}
+	if c.cfg.Redis {
+		interfaceAppListField = append(interfaceAppListField,
+			&ast.Field{
+				Names: []*ast.Ident{ast.NewIdent("Redis")},
+				Type: &ast.FuncType{
+					Params: &ast.FieldList{},
+					Results: &ast.FieldList{
+						List: []*ast.Field{
+							{
+								Type: &ast.SelectorExpr{
+									X: ast.NewIdent("redis"), Sel: ast.NewIdent("UniversalClient"),
+								},
+							},
+						},
+					},
+				},
+			},
+			&ast.Field{
+				Names: []*ast.Ident{ast.NewIdent("FiberStorage")},
+				Type: &ast.FuncType{
+					Params: &ast.FieldList{},
+					Results: &ast.FieldList{
+						List: []*ast.Field{
+							{
+								Type: &ast.SelectorExpr{
+									X: ast.NewIdent("fiber"), Sel: ast.NewIdent("Storage"),
+								},
+							},
+						},
+					},
+				},
+			},
+			&ast.Field{
+				Names: []*ast.Ident{ast.NewIdent("SessionStore")},
+				Type: &ast.FuncType{
+					Params: &ast.FieldList{},
+					Results: &ast.FieldList{
+						List: []*ast.Field{
+							{
+								Type: &ast.StarExpr{
+									X: &ast.SelectorExpr{
+										X: ast.NewIdent("session"), Sel: ast.NewIdent("Store"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			&ast.Field{
+				Names: []*ast.Ident{ast.NewIdent("GetRedisKeyf")},
+				Type: &ast.FuncType{
+					Params: &ast.FieldList{
+						List: []*ast.Field{
+							{
+								Names: []*ast.Ident{ast.NewIdent("key")},
+								Type:  ast.NewIdent("string"),
+							},
+							{
+								Names: []*ast.Ident{ast.NewIdent("format")},
+								Type: &ast.Ellipsis{
+									Elt: ast.NewIdent("any"),
+								},
+							},
+						},
+					},
+					Results: &ast.FieldList{
+						List: []*ast.Field{{Type: ast.NewIdent("string")}},
+					},
+				},
+			},
+		)
+	}
 	decls = append(decls, &ast.GenDecl{
 		Tok: token.TYPE,
 		Specs: []ast.Spec{
@@ -1355,154 +1514,7 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 				Name: ast.NewIdent("App"),
 				Type: &ast.InterfaceType{
 					Methods: &ast.FieldList{
-						List: []*ast.Field{
-							{
-								Names: []*ast.Ident{ast.NewIdent("IsProduction")},
-								Type: &ast.FuncType{
-									Params:  &ast.FieldList{},
-									Results: &ast.FieldList{List: []*ast.Field{{Type: ast.NewIdent("bool")}}},
-								},
-							},
-							{
-								Names: []*ast.Ident{ast.NewIdent("Embed")},
-								Type: &ast.FuncType{
-									Params:  &ast.FieldList{},
-									Results: &ast.FieldList{List: []*ast.Field{{Type: ast.NewIdent("Embed")}}},
-								},
-							},
-							{
-								Names: []*ast.Ident{ast.NewIdent("Crypto")},
-								Type: &ast.FuncType{
-									Params: &ast.FieldList{},
-									Results: &ast.FieldList{
-										List: []*ast.Field{
-											{
-												Type: &ast.SelectorExpr{
-													X: ast.NewIdent("pncrypto"), Sel: ast.NewIdent("Crypto"),
-												},
-											},
-										},
-									},
-								},
-							},
-							{
-								Names: []*ast.Ident{ast.NewIdent("Log")},
-								Type: &ast.FuncType{
-									Params: &ast.FieldList{},
-									Results: &ast.FieldList{
-										List: []*ast.Field{{Type: &ast.StarExpr{X: ast.NewIdent("Logger")}}},
-									},
-								},
-							},
-							{
-								Names: []*ast.Ident{ast.NewIdent("DB")},
-								Type: &ast.FuncType{
-									Params: &ast.FieldList{},
-									Results: &ast.FieldList{
-										List: []*ast.Field{
-											{
-												Type: &ast.StarExpr{
-													X: &ast.SelectorExpr{
-														X: ast.NewIdent("gorm"), Sel: ast.NewIdent("DB"),
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-							{
-								Names: []*ast.Ident{ast.NewIdent("Repository")},
-								Type: &ast.FuncType{
-									Params: &ast.FieldList{},
-									Results: &ast.FieldList{
-										List: []*ast.Field{
-											{
-												Type: &ast.SelectorExpr{
-													X: ast.NewIdent("repository"), Sel: ast.NewIdent("Registry"),
-												},
-											},
-										},
-									},
-								},
-							},
-							{
-								Names: []*ast.Ident{ast.NewIdent("Redis")},
-								Type: &ast.FuncType{
-									Params: &ast.FieldList{},
-									Results: &ast.FieldList{
-										List: []*ast.Field{
-											{
-												Type: &ast.SelectorExpr{
-													X: ast.NewIdent("redis"), Sel: ast.NewIdent("UniversalClient"),
-												},
-											},
-										},
-									},
-								},
-							},
-							{
-								Names: []*ast.Ident{ast.NewIdent("FiberStorage")},
-								Type: &ast.FuncType{
-									Params: &ast.FieldList{},
-									Results: &ast.FieldList{
-										List: []*ast.Field{
-											{
-												Type: &ast.SelectorExpr{
-													X: ast.NewIdent("fiber"), Sel: ast.NewIdent("Storage"),
-												},
-											},
-										},
-									},
-								},
-							},
-							{
-								Names: []*ast.Ident{ast.NewIdent("SessionStore")},
-								Type: &ast.FuncType{
-									Params: &ast.FieldList{},
-									Results: &ast.FieldList{
-										List: []*ast.Field{
-											{
-												Type: &ast.StarExpr{
-													X: &ast.SelectorExpr{
-														X: ast.NewIdent("session"), Sel: ast.NewIdent("Store"),
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-							{
-								Names: []*ast.Ident{ast.NewIdent("GetRedisKeyf")},
-								Type: &ast.FuncType{
-									Params: &ast.FieldList{
-										List: []*ast.Field{
-											{
-												Names: []*ast.Ident{ast.NewIdent("key")},
-												Type:  ast.NewIdent("string"),
-											},
-											{
-												Names: []*ast.Ident{ast.NewIdent("format")},
-												Type: &ast.Ellipsis{
-													Elt: ast.NewIdent("any"),
-												},
-											},
-										},
-									},
-									Results: &ast.FieldList{
-										List: []*ast.Field{{Type: ast.NewIdent("string")}},
-									},
-								},
-							},
-							{
-								Names: []*ast.Ident{ast.NewIdent("Close")},
-								Type: &ast.FuncType{
-									Params:  &ast.FieldList{},
-									Results: nil,
-								},
-							},
-						},
+						List: interfaceAppListField,
 					},
 				},
 			},

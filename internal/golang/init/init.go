@@ -58,6 +58,7 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 	go c.initConfigLog(wg, respChan)
 	go c.initConfigApp(wg, respChan)
 	go c.initServerHandlerUtils(wg, respChan)
+	go c.initGetter(wg, respChan)
 
 	go c.initCmdStart(wg, respChan)
 
@@ -66,7 +67,6 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 		"internal/repository/crud",
 		"internal/repository/options",
 		"internal/repository/repository",
-		"internal/config/getter",
 		"internal/rest/routes/routes",
 		"internal/rest/middleware/middleware",
 		"internal/rest/decoder",

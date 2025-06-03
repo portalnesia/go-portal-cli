@@ -9,6 +9,7 @@ package helper
 
 import (
 	"github.com/dave/dst"
+	"github.com/dave/dst/decorator"
 	"go/ast"
 	"go/token"
 )
@@ -81,4 +82,21 @@ func GenImport(
 		imports:   imports,
 		importDst: importDst,
 	}
+}
+
+func fixManualASTPackagePos(fset *token.FileSet, file *ast.File) {
+	if file.Pos() == token.NoPos {
+		// Daftarkan posisi token buatan untuk file kamu
+		tf := fset.AddFile("manual.go", -1, 1000) // nama, base, size
+		file.Package = token.Pos(tf.Base())       // Set posisi Package agar bukan NoPos
+	}
+}
+
+func AstToDst(file *ast.File) (*dst.File, error) {
+	fset := token.NewFileSet()
+	tokFile := fset.AddFile("manual.go", fset.Base(), 1000)
+	pos := tokFile.Pos(0)
+	file.Package = pos
+	dec := decorator.NewDecorator(fset)
+	return dec.DecorateFile(file)
 }

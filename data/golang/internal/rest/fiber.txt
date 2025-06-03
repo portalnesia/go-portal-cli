@@ -5,7 +5,7 @@
  * Written by Putu Aditya <aditya@portalnesia.com>
  */
 
-package server
+package rest
 
 import (
 	"errors"
