@@ -25,7 +25,7 @@ func Init(c *fiber.Ctx) error {
     ctx.Browser = browser
     ctx.BrowserString = browserStr
     ctx.Method = c.Method()
-    c.Locals("ctx", &ctx)
+    c.Locals("ctx", ctx)
 
     return c.Next()
 }
