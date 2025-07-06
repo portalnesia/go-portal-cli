@@ -1,0 +1,22 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package iface
+
+import (
+	context2 "context"
+	"github.com/mssola/user_agent"
+)
+
+type Context interface {
+	Context(ctx ...context2.Context) context2.Context
+    DBContext(ctx ...context2.Context) context2.Context
+	GetIP() string
+	GetBrowser() user_agent.UserAgent
+	GetBrowserString() string
+	GetMethod() string
+}

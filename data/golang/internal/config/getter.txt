@@ -8,16 +8,14 @@
 package config
 
 import (
-	"github.com/coreos/go-semver/semver"
-    {{IMPORT_IF_REDIS}}
-    pncrypto "go.portalnesia.com/crypto"
-    "gorm.io/gorm"
-    "APP_NAME/internal/repository"
+    "github.com/coreos/go-semver/semver"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/session"
+	pncrypto "go.portalnesia.com/crypto"
+	"gorm.io/gorm"
+	iface "APP_NAME/internal/interface"
+	"APP_NAME/internal/repository"
 )
-
-func (a *app) IsProduction() bool {
-	return a.isProduction
-}
 
 func (a *app) DB() *gorm.DB {
 	return a.db
@@ -35,8 +33,12 @@ func (a *app) Embed() Embed {
 	return a.embed
 }
 
-func (a *app) Log() *Logger {
+func (a *app) Log() iface.Logger {
 	return a.log
+}
+
+func (a *app) Env() iface.Env {
+	return a.env
 }
 
 {{IF_REDIS}}

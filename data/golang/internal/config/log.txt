@@ -10,23 +10,24 @@ package config
 import (
 	"fmt"
 	"github.com/rs/zerolog"
+	iface "APP_NAME/internal/interface"
 )
 
 type Logger struct {
 	logger zerolog.Logger
 }
 
-func (l *Logger) WithField(ctx func(l zerolog.Context) zerolog.Context) *Logger {
+func (l *Logger) WithField(ctx func(l zerolog.Context) zerolog.Context) iface.Logger {
 	childLogger := ctx(l.logger.With())
 	return &Logger{logger: childLogger.Logger()}
 }
 
-func (l *Logger) WithID(id string) *Logger {
+func (l *Logger) WithID(id string) iface.Logger {
 	childLogger := l.logger.With().Str("id", id)
 	return &Logger{logger: childLogger.Logger()}
 }
 
-func (l *Logger) WithIDf(id string, v ...any) *Logger {
+func (l *Logger) WithIDf(id string, v ...any) iface.Logger {
 	childLogger := l.logger.With().Str("id", fmt.Sprintf(id, v...))
 	return &Logger{logger: childLogger.Logger()}
 }

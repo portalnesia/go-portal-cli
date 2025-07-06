@@ -20,12 +20,11 @@ func Init(c *fiber.Ctx) error {
     ip := SetUpIP(c)
     browser, browserStr := SetUpBrowser(c)
 
-    ctx := context.Context{
-        IP:            ip,
-        Browser:       browser,
-        BrowserString: browserStr,
-        Method:        c.Method(),
-    }
+    ctx := context.NewContext()
+    ctx.IP = ip
+    ctx.Browser = browser
+    ctx.BrowserString = browserStr
+    ctx.Method = c.Method()
     c.Locals("ctx", &ctx)
 
     return c.Next()

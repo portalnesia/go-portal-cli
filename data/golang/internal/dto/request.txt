@@ -5,7 +5,7 @@
  * Written by Putu Aditya <aditya@portalnesia.com>
  */
 
-package request
+package dto
 
 import (
 	"fmt"
@@ -16,14 +16,6 @@ import (
 	"sync"
 	"time"
 )
-
-type RequestInterface interface {
-	SetTotal(t int64)
-	ListHelper(orderValue []string, defaultValue [][]string, table string) func(db *gorm.DB) *gorm.DB
-	GetPage() int
-	GetOrder() [][]string
-	SetCursorResponse(d string)
-}
 
 type Request struct {
 	Page     int              `query:"page"`

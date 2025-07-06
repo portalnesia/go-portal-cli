@@ -18,16 +18,17 @@ var embedPublic embed.FS
 //go:embed data/*
 var embedData embed.FS
 
-//go:embed data/*
+//go:embed migrations/*
 var embedMigrations embed.FS
 
 var (
-	tag  string
+	build  string
+	tag    string
 	commit string
 )
 
 func init() {
-	config.InitVersion(tag, commit)
+	config.InitVersion(tag, build, commit)
 }
 
 func main() {
@@ -36,5 +37,5 @@ func main() {
 		Data:   embedData,
 		Migration: embedMigrations,
 	}
-	cmd.Execute(emb, tag)
+	cmd.Execute(emb, build)
 }

@@ -8,7 +8,8 @@
 package repository
 
 import (
-	"APP_NAME/internal/request"
+    "APP_NAME/internal/dto"
+	iface "APP_NAME/internal/interface"
 )
 
 type DataModel interface {
@@ -17,21 +18,21 @@ type DataModel interface {
 	TableName() string
 }
 
-type CrudRepository[Model DataModel, TypeID any, Filter request.RequestInterface] interface {
-	FindOne(ctx ContextInterface, query Filter, id TypeID, opts ...Options) (resp *Model, err error)
-	FindAll(ctx ContextInterface, query Filter, opts ...Options) (resp []Model, err error)
-	Create(ctx ContextInterface, query Filter, data *Model, opts ...Options) (err error)
-	Update(ctx ContextInterface, query Filter, data *Model, opts ...Options) (err error)
-	Delete(ctx ContextInterface, query Filter, id TypeID, opts ...Options) (err error)
-	Count(ctx ContextInterface, opts ...Options) (total int64, err error)
-	ManualFirst(ctx ContextInterface, opts ...Options) (resp *Model, err error)
+type CrudRepository[Model DataModel, TypeID any, Filter iface.Request] interface {
+	FindOne(ctx iface.Context, query Filter, id TypeID, opts ...Options) (resp *Model, err error)
+	FindAll(ctx iface.Context, query Filter, opts ...Options) (resp []Model, err error)
+	Create(ctx iface.Context, query Filter, data *Model, opts ...Options) (err error)
+	Update(ctx iface.Context, query Filter, data *Model, opts ...Options) (err error)
+	Delete(ctx iface.Context, query Filter, id TypeID, opts ...Options) (err error)
+	Count(ctx iface.Context, opts ...Options) (total int64, err error)
+	ManualFirst(ctx iface.Context, opts ...Options) (resp *Model, err error)
 }
 
-type crudRepository[Model DataModel, TypeID any, Filter request.RequestInterface] struct {
+type crudRepository[Model DataModel, TypeID any, Filter iface.Request] struct {
 	base
 }
 
-func (r crudRepository[Model, TypeID, Filter]) FindOne(ctx ContextInterface, _ Filter, id TypeID, opts ...Options) (resp *Model, err error) {
+func (r crudRepository[Model, TypeID, Filter]) FindOne(ctx iface.Context, _ Filter, id TypeID, opts ...Options) (resp *Model, err error) {
 	db := r.getDatabase(ctx, opts...)
 
 	if err = db.Where("id = ?", id).First(&resp).Error; err != nil {
@@ -41,7 +42,7 @@ func (r crudRepository[Model, TypeID, Filter]) FindOne(ctx ContextInterface, _ F
 	return
 }
 
-func (r crudRepository[Model, TypeID, Filter]) FindAll(ctx ContextInterface, query Filter, opts ...Options) (resp []Model, err error) {
+func (r crudRepository[Model, TypeID, Filter]) FindAll(ctx iface.Context, query Filter, opts ...Options) (resp []Model, err error) {
 	var tmp Model
 	db := r.getDatabase(ctx, opts...).Model(tmp)
 
@@ -56,7 +57,7 @@ func (r crudRepository[Model, TypeID, Filter]) FindAll(ctx ContextInterface, que
 	if query.GetPage() == 0 {
 		lenData := len(resp)
 		if lenData > 0 {
-			cursorResponse, _ := request.ExtractValuesByColumns(&resp[lenData-1], query.GetOrder())
+			cursorResponse, _ := dto.ExtractValuesByColumns(&resp[lenData-1], query.GetOrder())
 			query.SetCursorResponse(cursorResponse)
 		}
 	}
@@ -68,32 +69,32 @@ func (r crudRepository[Model, TypeID, Filter]) FindAll(ctx ContextInterface, que
 	return
 }
 
-func (r crudRepository[Model, TypeID, Filter]) Create(ctx ContextInterface, _ Filter, data *Model, opts ...Options) (err error) {
+func (r crudRepository[Model, TypeID, Filter]) Create(ctx iface.Context, _ Filter, data *Model, opts ...Options) (err error) {
 	db := r.getDatabase(ctx, opts...)
 
 	return db.Create(&data).Error
 }
 
-func (r crudRepository[Model, TypeID, Filter]) Update(ctx ContextInterface, _ Filter, data *Model, opts ...Options) (err error) {
+func (r crudRepository[Model, TypeID, Filter]) Update(ctx iface.Context, _ Filter, data *Model, opts ...Options) (err error) {
 	db := r.getDatabase(ctx, opts...)
 
 	return db.Save(&data).Error
 }
 
-func (r crudRepository[Model, TypeID, Filter]) Delete(ctx ContextInterface, _ Filter, id TypeID, opts ...Options) (err error) {
+func (r crudRepository[Model, TypeID, Filter]) Delete(ctx iface.Context, _ Filter, id TypeID, opts ...Options) (err error) {
 	var tmp Model
 	db := r.getDatabase(ctx, opts...)
 
 	return db.Where("id = ?", id).Delete(&tmp).Error
 }
 
-func (r crudRepository[Model, TypeID, Filter]) Count(ctx ContextInterface, opts ...Options) (total int64, err error) {
+func (r crudRepository[Model, TypeID, Filter]) Count(ctx iface.Context, opts ...Options) (total int64, err error) {
 	var tmp Model
 	err = r.getDatabase(ctx, opts...).Model(&tmp).Count(&total).Error
 	return
 }
 
-func (r crudRepository[Model, TypeID, Filter]) ManualFirst(ctx ContextInterface, opts ...Options) (resp *Model, err error) {
+func (r crudRepository[Model, TypeID, Filter]) ManualFirst(ctx iface.Context, opts ...Options) (resp *Model, err error) {
 	var tmp Model
 	err = r.getDatabase(ctx, opts...).Model(&tmp).First(&resp).Error
 	return

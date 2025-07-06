@@ -87,7 +87,7 @@ func New(app config.App) (server *Server) {
 		EnableStackTrace: true,
 	}))
 
-	if !app.IsProduction() {
+	if !app.Env().IsServer() {
 		// Logger
 		fiberApp.Use(logger.New())
 	}

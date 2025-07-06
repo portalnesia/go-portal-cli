@@ -31,7 +31,7 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 	pkgImport := []string{
 		`"github.com/gofiber/fiber/v2"`,
 		fmt.Sprintf(`"%s/internal/context"`, s.cfg.Module),
-		fmt.Sprintf(`"%s/internal/request"`, s.cfg.Module),
+		fmt.Sprintf(`"%s/internal/dto"`, s.cfg.Module),
 		fmt.Sprintf(`"%s/internal/config"`, s.cfg.Module),
 		fmt.Sprintf(`"%s/internal/service"`, s.cfg.Module),
 	}
@@ -191,7 +191,7 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 													Names: []*dst.Ident{dst.NewIdent("query")},
 													Type: &dst.StarExpr{
 														X: &dst.SelectorExpr{
-															X:   dst.NewIdent("request"),
+															X:   dst.NewIdent("dto"),
 															Sel: dst.NewIdent("Request"),
 														},
 													},
@@ -347,7 +347,7 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 													Names: []*dst.Ident{dst.NewIdent("query")},
 													Type: &dst.StarExpr{
 														X: &dst.SelectorExpr{
-															X:   dst.NewIdent("request"),
+															X:   dst.NewIdent("dto"),
 															Sel: dst.NewIdent("Request"),
 														},
 													},
@@ -483,7 +483,7 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 													Names: []*dst.Ident{dst.NewIdent("query")},
 													Type: &dst.StarExpr{
 														X: &dst.SelectorExpr{
-															X:   dst.NewIdent("request"),
+															X:   dst.NewIdent("dto"),
 															Sel: dst.NewIdent("Request"),
 														},
 													},
@@ -623,7 +623,7 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 													Names: []*dst.Ident{dst.NewIdent("query")},
 													Type: &dst.StarExpr{
 														X: &dst.SelectorExpr{
-															X:   dst.NewIdent("request"),
+															X:   dst.NewIdent("dto"),
 															Sel: dst.NewIdent("Request"),
 														},
 													},
@@ -779,7 +779,7 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 													Names: []*dst.Ident{dst.NewIdent("query")},
 													Type: &dst.StarExpr{
 														X: &dst.SelectorExpr{
-															X:   dst.NewIdent("request"),
+															X:   dst.NewIdent("dto"),
 															Sel: dst.NewIdent("Request"),
 														},
 													},
@@ -975,7 +975,7 @@ func (s *addEndpoint) addEndpointHandler(wg *sync.WaitGroup, res chan<- config2.
 													Names: []*dst.Ident{dst.NewIdent("query")},
 													Type: &dst.StarExpr{
 														X: &dst.SelectorExpr{
-															X:   dst.NewIdent("request"),
+															X:   dst.NewIdent("dto"),
 															Sel: dst.NewIdent("Request"),
 														},
 													},

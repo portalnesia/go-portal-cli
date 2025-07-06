@@ -14,7 +14,7 @@ import (
 	"APP_NAME/internal/cerror"
 	"APP_NAME/internal/config"
 	"APP_NAME/internal/context"
-	"APP_NAME/internal/request"
+	"APP_NAME/internal/dto"
 	"APP_NAME/pkg/helper"
 )
 
@@ -27,9 +27,9 @@ func getCtx(app config.App, c *fiber.Ctx) (*context.Context, error) {
 	return ctx, nil
 }
 
-func newHandler(app config.App, c *fiber.Ctx, handler func(ctx *context.Context, query *request.Request) error) error {
+func newHandler(app config.App, c *fiber.Ctx, handler func(ctx *context.Context, query *dto.Request) error) error {
 	var (
-		req request.Request
+		req dto.Request
 	)
 
 	ctx, err := getCtx(app, c)

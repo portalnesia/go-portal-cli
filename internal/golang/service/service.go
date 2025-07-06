@@ -32,7 +32,7 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 		`"errors"`,
 		fmt.Sprintf(`context2 "%s/internal/context"`, s.cfg.Module),
 		fmt.Sprintf(`"%s/internal/config"`, s.cfg.Module),
-		fmt.Sprintf(`"%s/internal/request"`, s.cfg.Module),
+		fmt.Sprintf(`"%s/internal/dto"`, s.cfg.Module),
 	}
 	decls := make([]dst.Decl, 0)
 
@@ -124,7 +124,7 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 						Names: []*dst.Ident{dst.NewIdent("query")},
 						Type: &dst.StarExpr{
 							X: &dst.SelectorExpr{
-								X:   dst.NewIdent("request"),
+								X:   dst.NewIdent("dto"),
 								Sel: dst.NewIdent("Request"),
 							},
 						},
@@ -192,7 +192,7 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 						Names: []*dst.Ident{dst.NewIdent("query")},
 						Type: &dst.StarExpr{
 							X: &dst.SelectorExpr{
-								X:   dst.NewIdent("request"),
+								X:   dst.NewIdent("dto"),
 								Sel: dst.NewIdent("Request"),
 							},
 						},
@@ -256,7 +256,7 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 						Names: []*dst.Ident{dst.NewIdent("query")},
 						Type: &dst.StarExpr{
 							X: &dst.SelectorExpr{
-								X:   dst.NewIdent("request"),
+								X:   dst.NewIdent("dto"),
 								Sel: dst.NewIdent("Request"),
 							},
 						},
@@ -320,7 +320,7 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 						Names: []*dst.Ident{dst.NewIdent("query")},
 						Type: &dst.StarExpr{
 							X: &dst.SelectorExpr{
-								X:   dst.NewIdent("request"),
+								X:   dst.NewIdent("dto"),
 								Sel: dst.NewIdent("Request"),
 							},
 						},
@@ -388,7 +388,7 @@ func (s *addService) addServiceUsecase(wg *sync.WaitGroup, res chan<- config2.Bu
 						Names: []*dst.Ident{dst.NewIdent("query")},
 						Type: &dst.StarExpr{
 							X: &dst.SelectorExpr{
-								X:   dst.NewIdent("request"),
+								X:   dst.NewIdent("dto"),
 								Sel: dst.NewIdent("Request"),
 							},
 						},
@@ -491,7 +491,7 @@ func (s *addEndpoint) addEndpointUsecase(wg *sync.WaitGroup, res chan<- config2.
 						Names: []*dst.Ident{dst.NewIdent("query")},
 						Type: &dst.StarExpr{
 							X: &dst.SelectorExpr{
-								X:   dst.NewIdent("request"),
+								X:   dst.NewIdent("dto"),
 								Sel: dst.NewIdent("Request"),
 							},
 						},

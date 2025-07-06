@@ -9,19 +9,19 @@ package repository
 
 import (
 	"APP_NAME/internal/model"
-	"APP_NAME/internal/request"
+	"APP_NAME/internal/dto"
 )
 
 type UserRepository interface {
-	CrudRepository[model.User, string, *request.Request]
+	CrudRepository[model.User, string, *dto.Request]
 }
 
 type userRepository struct {
-	crudRepository[model.User, string, *request.Request]
+	crudRepository[model.User, string, *dto.Request]
 }
 
 func newUserRepository(bs base) UserRepository {
 	return userRepository{
-		crudRepository[model.User, string, *request.Request]{bs},
+		crudRepository[model.User, string, *dto.Request]{bs},
 	}
 }

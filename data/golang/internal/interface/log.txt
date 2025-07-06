@@ -1,0 +1,23 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package iface
+
+import "github.com/rs/zerolog"
+
+type Logger interface {
+	WithField(ctx func(l zerolog.Context) zerolog.Context) Logger
+	WithID(id string) Logger
+	WithIDf(id string, v ...any) Logger
+
+	Debug(service string, err ...error) *zerolog.Event
+	Info(service string, err ...error) *zerolog.Event
+	Warn(service string, err ...error) *zerolog.Event
+	Error(err error, service string) *zerolog.Event
+	Fatal(err error, service string) *zerolog.Event
+}
+

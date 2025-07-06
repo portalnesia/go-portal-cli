@@ -9,7 +9,7 @@ package rest
 
 import (
 	nullable2 "go.portalnesia.com/nullable"
-	"APP_NAME/internal/request"
+	"APP_NAME/internal/dto"
 	"APP_NAME/pkg/helper"
 	"reflect"
 	"strconv"
@@ -43,7 +43,7 @@ func registerDecoder() []fiber.ParserType {
 	}
 
 	mapQuery := fiber.ParserType{
-		Customtype: request.MapQuery{},
+		Customtype: dto.MapQuery{},
 		Converter:  cursorConverter,
 	}
 
@@ -101,10 +101,10 @@ var intConverter = func(value string) reflect.Value {
 }
 
 var cursorConverter = func(value string) reflect.Value {
-	cursor, err := request.VerifyMapQuery(value)
+	cursor, err := dto.VerifyMapQuery(value)
 	if err != nil {
 		//fmt.Println("cursor invalid:", err)        // opsional logging
-		return reflect.ValueOf(request.MapQuery{}) // return empty map
+		return reflect.ValueOf(dto.MapQuery{}) // return empty map
 	}
 	return reflect.ValueOf(cursor)
 }

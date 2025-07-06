@@ -9,14 +9,21 @@ package repository
 
 import (
 	"gorm.io/gorm"
+	iface "APP_NAME/internal/interface"
 )
 
 type Registry struct {
 	Base BaseRepository
 }
 
-func NewRepository(db *gorm.DB) Registry {
-	bs := base{db}
+type NewRepositoryConfig struct {
+	DB    *gorm.DB
+	Env   iface.Env
+	Log   iface.Logger
+}
+
+func NewRepository(conf NewRepositoryConfig) Registry {
+	bs := base{conf.DB, conf.Log, conf.Env}
 	return Registry{
 		Base: bs,
 	}

@@ -30,6 +30,7 @@ func (c *initType) initConfigApp(wg *sync.WaitGroup, res chan<- config2.Builder)
 		`"gorm.io/gorm"`,
 		`"os"`,
 		fmt.Sprintf(`"%s/internal/repository"`, c.cfg.Module),
+		fmt.Sprintf(`iface "%s/internal/interface"`, c.cfg.Module),
 		`"strings"`,
 		`"time"`,
 	}
@@ -150,18 +151,31 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 				},
 			},
 			&ast.AssignStmt{
-				Lhs: []ast.Expr{ast.NewIdent("isProduction")},
+				Lhs: []ast.Expr{
+					&ast.Ident{
+						Name: "env",
+					},
+				},
 				Tok: token.ASSIGN,
 				Rhs: []ast.Expr{
-					&ast.BinaryExpr{
-						X: &ast.SelectorExpr{
-							X:   ast.NewIdent("config"),
-							Sel: ast.NewIdent("Tag"),
+					&ast.CompositeLit{
+						Type: &ast.Ident{
+							Name: "envImpl",
 						},
-						Op: token.NEQ,
-						Y: &ast.BasicLit{
-							Kind:  token.STRING,
-							Value: `""`,
+						Elts: []ast.Expr{
+							&ast.KeyValueExpr{
+								Key: &ast.Ident{
+									Name: "build",
+								},
+								Value: &ast.SelectorExpr{
+									X: &ast.Ident{
+										Name: "config",
+									},
+									Sel: &ast.Ident{
+										Name: "Build",
+									},
+								},
+							},
 						},
 					},
 				},
@@ -241,13 +255,20 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 			},
 		},
 	})
-	// if !isProduction { logger = logger.Level(zerolog.InfoLevel) }
+	// if !env.IsServer() { logger = logger.Level(zerolog.InfoLevel) }
 	body.List = append(body.List, &ast.IfStmt{
-		Cond: &ast.Ident{Name: "isProduction"},
+		Cond: &ast.CallExpr{
+			Fun: &ast.SelectorExpr{
+				X:   ast.NewIdent("env"),
+				Sel: ast.NewIdent("IsServer"),
+			},
+		},
 		Body: &ast.BlockStmt{
 			List: []ast.Stmt{
 				&ast.AssignStmt{
-					Lhs: []ast.Expr{ast.NewIdent("logger")},
+					Lhs: []ast.Expr{
+						ast.NewIdent("logger"),
+					},
 					Tok: token.ASSIGN,
 					Rhs: []ast.Expr{
 						&ast.CallExpr{
@@ -670,11 +691,18 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 						},
 						// if isProduction { redisName += "-" + Version.String() } else { redisName += "-local" }
 						&ast.IfStmt{
-							Cond: ast.NewIdent("isProduction"),
+							Cond: &ast.CallExpr{
+								Fun: &ast.SelectorExpr{
+									X:   ast.NewIdent("env"),
+									Sel: ast.NewIdent("IsProduction"),
+								},
+							},
 							Body: &ast.BlockStmt{
 								List: []ast.Stmt{
 									&ast.AssignStmt{
-										Lhs: []ast.Expr{ast.NewIdent("redisName")},
+										Lhs: []ast.Expr{
+											ast.NewIdent("redisName"),
+										},
 										Tok: token.ADD_ASSIGN,
 										Rhs: []ast.Expr{
 											&ast.BinaryExpr{
@@ -694,15 +722,50 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 									},
 								},
 							},
-							Else: &ast.BlockStmt{
-								List: []ast.Stmt{
-									&ast.AssignStmt{
-										Lhs: []ast.Expr{ast.NewIdent("redisName")},
-										Tok: token.ADD_ASSIGN,
-										Rhs: []ast.Expr{
-											&ast.BasicLit{
-												Kind:  token.STRING,
-												Value: `"-local"`,
+							Else: &ast.IfStmt{
+								Cond: &ast.CallExpr{
+									Fun: &ast.SelectorExpr{
+										X:   ast.NewIdent("env"),
+										Sel: ast.NewIdent("IsLocal"),
+									},
+								},
+								Body: &ast.BlockStmt{
+									List: []ast.Stmt{
+										&ast.AssignStmt{
+											Lhs: []ast.Expr{
+												ast.NewIdent("redisName"),
+											},
+											Tok: token.ADD_ASSIGN,
+											Rhs: []ast.Expr{
+												&ast.BasicLit{
+													Kind:  token.STRING,
+													Value: `"-local"`,
+												},
+											},
+										},
+									},
+								},
+								Else: &ast.BlockStmt{
+									List: []ast.Stmt{
+										&ast.AssignStmt{
+											Lhs: []ast.Expr{
+												ast.NewIdent("redisName"),
+											},
+											Tok: token.ADD_ASSIGN,
+											Rhs: []ast.Expr{
+												&ast.BinaryExpr{
+													X: &ast.BasicLit{
+														Kind:  token.STRING,
+														Value: `"-"`,
+													},
+													Op: token.ADD,
+													Y: &ast.CallExpr{
+														Fun: &ast.SelectorExpr{
+															X:   ast.NewIdent("env"),
+															Sel: ast.NewIdent("EnvShortString"),
+														},
+													},
+												},
 											},
 										},
 									},
@@ -776,6 +839,14 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 						},
 						&ast.KeyValueExpr{
 							Key: &ast.Ident{
+								Name: "env",
+							},
+							Value: &ast.Ident{
+								Name: "env",
+							},
+						},
+						&ast.KeyValueExpr{
+							Key: &ast.Ident{
 								Name: "embed",
 							},
 							Value: &ast.SelectorExpr{
@@ -806,14 +877,6 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 								},
 							},
 						},
-						&ast.KeyValueExpr{
-							Key: &ast.Ident{
-								Name: "isProduction",
-							},
-							Value: &ast.Ident{
-								Name: "isProduction",
-							},
-						},
 					},
 				},
 			},
@@ -824,8 +887,18 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 			Key: &ast.Ident{
 				Name: "redis",
 			},
-			Value: &ast.Ident{
-				Name: "redisClient",
+			Value: &ast.UnaryExpr{
+				Op: token.AND,
+				X: &ast.CompositeLit{
+					Type: &ast.Ident{
+						Name: "redisImpl",
+					},
+					Elts: []ast.Expr{
+						&ast.Ident{
+							Name: "redisClient",
+						},
+					},
+				},
 			},
 		}, &ast.KeyValueExpr{
 			Key: &ast.Ident{
@@ -882,9 +955,34 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 								Sel: ast.NewIdent("NewRepository"),
 							},
 							Args: []ast.Expr{
-								&ast.SelectorExpr{
-									X:   ast.NewIdent("apps"),
-									Sel: ast.NewIdent("db"),
+								&ast.CompositeLit{
+									Type: &ast.SelectorExpr{
+										X:   &ast.Ident{Name: "repository"},
+										Sel: &ast.Ident{Name: "NewRepositoryConfig"},
+									},
+									Elts: []ast.Expr{
+										// DB: apps.db
+										&ast.KeyValueExpr{
+											Key: &ast.Ident{Name: "DB"},
+											Value: &ast.SelectorExpr{
+												X:   &ast.Ident{Name: "apps"},
+												Sel: &ast.Ident{Name: "db"},
+											},
+										},
+										// Env: env
+										&ast.KeyValueExpr{
+											Key:   &ast.Ident{Name: "Env"},
+											Value: &ast.Ident{Name: "env"},
+										},
+										// Log: &log
+										&ast.KeyValueExpr{
+											Key: &ast.Ident{Name: "Log"},
+											Value: &ast.UnaryExpr{
+												Op: token.AND,
+												X:  &ast.Ident{Name: "log"},
+											},
+										},
+									},
 								},
 							},
 						},
@@ -1300,8 +1398,11 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 		},
 		Specs: []ast.Spec{
 			&ast.ValueSpec{
-				Names: []*ast.Ident{ast.NewIdent("isProduction")},
-				Type:  ast.NewIdent("bool"),
+				Names: []*ast.Ident{ast.NewIdent("env")},
+				Type: &ast.SelectorExpr{
+					X:   &ast.Ident{Name: "iface"},
+					Sel: &ast.Ident{Name: "Env"},
+				},
 			},
 			&ast.ValueSpec{
 				Names: []*ast.Ident{ast.NewIdent("log")},
@@ -1321,7 +1422,7 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 			Type:  ast.NewIdent("bool"),
 		},
 		{
-			Names: []*ast.Ident{ast.NewIdent("Tag")},
+			Names: []*ast.Ident{ast.NewIdent("Build")},
 			Type:  ast.NewIdent("string"),
 		},
 		{
@@ -1357,10 +1458,18 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 	//interface App
 	interfaceAppListField := []*ast.Field{
 		{
-			Names: []*ast.Ident{ast.NewIdent("IsProduction")},
+			Names: []*ast.Ident{ast.NewIdent("Env")},
 			Type: &ast.FuncType{
-				Params:  &ast.FieldList{},
-				Results: &ast.FieldList{List: []*ast.Field{{Type: ast.NewIdent("bool")}}},
+				Params: &ast.FieldList{},
+				Results: &ast.FieldList{
+					List: []*ast.Field{
+						{
+							Type: &ast.SelectorExpr{
+								X: ast.NewIdent("iface"), Sel: ast.NewIdent("Env"),
+							},
+						},
+					},
+				},
 			},
 		},
 		{
@@ -1390,7 +1499,13 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 			Type: &ast.FuncType{
 				Params: &ast.FieldList{},
 				Results: &ast.FieldList{
-					List: []*ast.Field{{Type: &ast.StarExpr{X: ast.NewIdent("Logger")}}},
+					List: []*ast.Field{
+						{
+							Type: &ast.SelectorExpr{
+								X: ast.NewIdent("iface"), Sel: ast.NewIdent("Logger"),
+							},
+						},
+					},
 				},
 			},
 		},
@@ -1444,7 +1559,7 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 						List: []*ast.Field{
 							{
 								Type: &ast.SelectorExpr{
-									X: ast.NewIdent("redis"), Sel: ast.NewIdent("UniversalClient"),
+									X: ast.NewIdent("iface"), Sel: ast.NewIdent("RedisInterface"),
 								},
 							},
 						},
@@ -1483,28 +1598,6 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 					},
 				},
 			},
-			&ast.Field{
-				Names: []*ast.Ident{ast.NewIdent("GetRedisKeyf")},
-				Type: &ast.FuncType{
-					Params: &ast.FieldList{
-						List: []*ast.Field{
-							{
-								Names: []*ast.Ident{ast.NewIdent("key")},
-								Type:  ast.NewIdent("string"),
-							},
-							{
-								Names: []*ast.Ident{ast.NewIdent("format")},
-								Type: &ast.Ellipsis{
-									Elt: ast.NewIdent("any"),
-								},
-							},
-						},
-					},
-					Results: &ast.FieldList{
-						List: []*ast.Field{{Type: ast.NewIdent("string")}},
-					},
-				},
-			},
 		)
 	}
 	decls = append(decls, &ast.GenDecl{
@@ -1532,8 +1625,11 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 			Type:  ast.NewIdent("Embed"),
 		},
 		{
-			Names: []*ast.Ident{ast.NewIdent("isProduction")},
-			Type:  ast.NewIdent("bool"),
+			Names: []*ast.Ident{ast.NewIdent("env")},
+			Type: &ast.SelectorExpr{
+				X:   ast.NewIdent("iface"),
+				Sel: ast.NewIdent("Env"),
+			},
 		},
 		{
 			Names: []*ast.Ident{ast.NewIdent("crypto")},
@@ -1567,10 +1663,7 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 		typeAppListField = append(typeAppListField,
 			&ast.Field{
 				Names: []*ast.Ident{ast.NewIdent("redis")},
-				Type: &ast.SelectorExpr{
-					X:   ast.NewIdent("redis"),
-					Sel: ast.NewIdent("UniversalClient"),
-				},
+				Type:  &ast.StarExpr{X: ast.NewIdent("redisImpl")},
 			},
 			&ast.Field{
 				Names: []*ast.Ident{ast.NewIdent("sessionStore")},

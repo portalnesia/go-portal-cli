@@ -10,6 +10,7 @@ package context
 import (
 	context2 "context"
 	"github.com/mssola/user_agent"
+	"sync"
 )
 
 type Context struct {
@@ -17,17 +18,36 @@ type Context struct {
 	Browser       user_agent.UserAgent
 	BrowserString string
 	Method        string
-	ctx context2.Context
+	ctxDB        context2.Context
+    ctxWIthoutDB context2.Context
+
+    mu *sync.Mutex
 }
 
-func (c Context) Context(ctx ...context2.Context) context2.Context {
+func NewContext() *Context {
+	return &Context{
+		mu: &sync.Mutex{},
+	}
+}
+
+func (c *Context) Context(ctx ...context2.Context) context2.Context {
 	if len(ctx) > 0 {
-		c.ctx = ctx[0]
+		c.ctxWIthoutDB = ctx[0]
 	}
-	if c.ctx == nil {
-		c.ctx = context2.Background()
+	if c.ctxWIthoutDB == nil {
+		c.ctxWIthoutDB = context2.Background()
 	}
-	return c.ctx
+	return c.ctxWIthoutDB
+}
+
+func (c *Context) DBContext(ctx ...context2.Context) context2.Context {
+	if len(ctx) > 0 {
+		c.ctxDB = ctx[0]
+	}
+	if c.ctxDB == nil {
+		return c.Context()
+	}
+	return c.ctxDB
 }
 
 func (c *Context) GetIP() string {

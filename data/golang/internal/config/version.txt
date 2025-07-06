@@ -11,17 +11,27 @@ import "github.com/coreos/go-semver/semver"
 
 var version = semver.New(tmpVersion)
 
-func InitVersion(tag, commitRef string) {
+func InitVersion(tag, build, commitRef string) {
+	tmpVersion += "-"
+
 	if tag != "" {
 		tmpVersion = tag
 	}
+	if build == "development" || build == "beta" {
+		if build == "development" {
+			tmpVersion += "dev"
+		} else {
+			tmpVersion += "beta"
+		}
+	} else if build == "" {
+		tmpVersion += "local"
+	}
+
 	if commitRef != "" {
 		if len(commitRef) > 7 {
 			commitRef = commitRef[:7]
 		}
 		tmpVersion += "-" + commitRef
-	} else {
-		tmpVersion += "-local"
 	}
 
 	version = semver.New(tmpVersion)

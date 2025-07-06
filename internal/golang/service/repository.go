@@ -31,7 +31,7 @@ func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- conf
 	_, _ = color.New(color.FgBlue).Printf("Generating repository\n")
 	pkgImport := []string{
 		fmt.Sprintf(`"%s/internal/model"`, s.cfg.Module),
-		fmt.Sprintf(`"%s/internal/request"`, s.cfg.Module),
+		fmt.Sprintf(`"%s/internal/dto"`, s.cfg.Module),
 	}
 
 	decls := make([]dst.Decl, 0)
@@ -56,7 +56,7 @@ func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- conf
 										dst.NewIdent("string"),
 										&dst.StarExpr{
 											X: &dst.SelectorExpr{
-												X:   dst.NewIdent("request"),
+												X:   dst.NewIdent("dto"),
 												Sel: dst.NewIdent("Request"),
 											},
 										},
@@ -90,7 +90,7 @@ func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- conf
 										dst.NewIdent("string"),
 										&dst.StarExpr{
 											X: &dst.SelectorExpr{
-												X:   dst.NewIdent("request"),
+												X:   dst.NewIdent("dto"),
 												Sel: dst.NewIdent("Request"),
 											},
 										},
@@ -142,7 +142,7 @@ func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- conf
 											dst.NewIdent("string"),
 											&dst.StarExpr{
 												X: &dst.SelectorExpr{
-													X:   dst.NewIdent("request"),
+													X:   dst.NewIdent("dto"),
 													Sel: dst.NewIdent("Request"),
 												},
 											},

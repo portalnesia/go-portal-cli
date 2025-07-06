@@ -8,11 +8,14 @@
 package config
 
 import (
-	"fmt"
+	"context"
+    "fmt"
+    "github.com/goccy/go-json"
     "github.com/gofiber/fiber/v2"
     "github.com/gofiber/fiber/v2/middleware/session"
     fiberredis "github.com/gofiber/storage/redis/v3"
     "github.com/google/uuid"
+    "github.com/redis/go-redis/v9"
     "github.com/spf13/viper"
     "time"
 )
@@ -30,13 +33,137 @@ func initFiberStorage(clientName string) *fiberredis.Storage {
 }
 
 func initSession(storage fiber.Storage) (sessionStore *session.Store) {
-	config := session.Config{Expiration: 1 * time.Hour, CookieSecure: isProduction, CookiePath: "/", CookieHTTPOnly: true, KeyLookup: "cookie:APP_NAMESESSID", KeyGenerator: func() string {
-		return "app_name:session:" + uuid.New().String()
-	}, Storage: storage}
+	config := session.Config{
+	    Expiration: 1 * time.Hour,
+	    CookieSecure: env.IsServer(),
+	    CookiePath: "/",
+	    CookieHTTPOnly: true,
+	    KeyLookup: "cookie:APP_NAMESESSID",
+	    KeyGenerator: func() string {
+            name := "APP_NAME"
+            if !env.IsProduction() {
+                name += "_" + env.EnvShortString()
+            }
+            return name + ":session:" + uuid.New().String()
+        },
+	    Storage: storage,
+    }
 	sessionStore = session.New(config)
 	return
 }
 
-func (a *app) GetRedisKeyf(key string, format ...any) string {
-	return "app_name:" + fmt.Sprintf(key, format...)
+func getRedisKeyf(key string, format ...any) string {
+	name := "APP_NAME"
+	if !env.IsProduction() {
+		name += "_" + env.EnvShortString()
+	}
+	return name + ":" + fmt.Sprintf(key, format...)
+}
+
+type redisImpl struct {
+	redis.UniversalClient
+}
+
+func (r *redisImpl) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd {
+	switch value.(type) {
+	case string, bool, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, []byte:
+		return r.UniversalClient.Set(ctx, key, value, expiration)
+	default:
+		b, err := json.Marshal(value)
+		if err != nil {
+			tmp := redis.StatusCmd{}
+			tmp.SetErr(err)
+			return &tmp
+		}
+		return r.UniversalClient.Set(ctx, key, b, expiration)
+	}
+}
+
+// GetObj get object value
+func (r *redisImpl) GetObj(ctx context.Context, key string, doc interface{}) error {
+	b, err := r.UniversalClient.Get(ctx, key).Bytes()
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, doc)
+}
+
+func (r *redisImpl) GetRedisKeyf(key string, format ...any) string {
+	return getRedisKeyf(key, format...)
+}
+
+// Exist check if key exist
+func (r *redisImpl) Exist(ctx context.Context, key string) bool {
+	return r.UniversalClient.Exists(ctx, key).Val() > 0
+}
+
+func (r *redisImpl) GetKeys(ctx context.Context, pattern string) []string {
+	keys, err := r.scanKeys(ctx, pattern)
+	if err != nil {
+		return nil
+	}
+
+	return keys
+}
+
+// Delete delete multiple record
+func (r *redisImpl) Delete(ctx context.Context, keys ...string) error {
+	if keys == nil || len(keys) == 0 {
+		return nil
+	}
+
+	if len(keys) == 1 {
+		return r.UniversalClient.Del(ctx, keys[0]).Err()
+	}
+
+	_, err := r.UniversalClient.Pipelined(ctx, func(pipeline redis.Pipeliner) error {
+		pipeline.Del(ctx, keys...)
+		return nil
+	})
+
+	return err
+}
+
+// GetTTL get rest of ttl
+func (r *redisImpl) GetTTL(ctx context.Context, key string) (time.Duration, error) {
+	dur, err := r.UniversalClient.TTL(ctx, key).Result()
+	if err != nil {
+		return 0, err
+	}
+	return dur, nil
+}
+
+// DeletePattern delete record by pattern
+func (r *redisImpl) DeletePattern(ctx context.Context, pattern string) error {
+
+	keys, err := r.scanKeys(ctx, pattern)
+	if err != nil {
+		return err
+	}
+
+	if keys == nil || len(keys) == 0 {
+		return nil
+	}
+
+	_, err = r.UniversalClient.Pipelined(ctx, func(pipeline redis.Pipeliner) error {
+		pipeline.Del(ctx, keys...)
+		return nil
+	})
+
+	return err
+}
+
+func (r *redisImpl) scanKeys(ctx context.Context, pattern string) ([]string, error) {
+	iter := r.UniversalClient.Scan(ctx, 0, pattern, 0).Iterator()
+	var keys []string
+
+	for iter.Next(ctx) {
+		keys = append(keys, iter.Val())
+	}
+
+	if err := iter.Err(); err != nil {
+		return nil, err
+	}
+
+	return keys, nil
 }

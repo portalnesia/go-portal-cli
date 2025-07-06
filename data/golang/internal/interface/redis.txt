@@ -1,0 +1,25 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package iface
+
+import (
+	"context"
+	"github.com/redis/go-redis/v9"
+	"time"
+)
+
+type RedisInterface interface {
+	redis.UniversalClient
+	GetObj(ctx context.Context, key string, doc interface{}) error
+	GetRedisKeyf(key string, format ...any) string
+	Exist(ctx context.Context, key string) bool
+	GetKeys(ctx context.Context, pattern string) []string
+	Delete(ctx context.Context, keys ...string) error
+	GetTTL(ctx context.Context, key string) (time.Duration, error)
+	DeletePattern(ctx context.Context, pattern string) error
+}

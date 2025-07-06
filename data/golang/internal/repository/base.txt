@@ -10,36 +10,39 @@ package repository
 import (
 	"context"
 	"gorm.io/gorm"
+	iface "APP_NAME/internal/interface"
 )
 
-type ContextInterface interface {
-	Context(c ...context.Context) context.Context
-}
-
 type BaseRepository interface {
-	StartTransaction(c ContextInterface, fc func() error) error
+	StartTransaction(c iface.Context, fc func() error) (err error)
 }
 
 type base struct {
-	db *gorm.DB
+	db      *gorm.DB
+	log     iface.Logger
+	env     iface.Env
 }
 
-func (r base) StartTransaction(c ContextInterface, fc func() error) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
+type dbValue struct{}
+
+func (r base) StartTransaction(c iface.Context, fc func() error) (err error) {
+	err = r.db.Transaction(func(tx *gorm.DB) error {
 		// save transaction to context
-		ctx := context.WithValue(c.Context(), "db", tx)
-		c.Context(ctx)
+		ctx := context.WithValue(c.DBContext(), dbValue{}, tx)
+		c.DBContext(ctx)
 		errTx := fc()
 		if errTx != nil {
 			return errTx
 		}
 		return nil
 	})
+	c.DBContext(nil)
+	return err
 }
 
-func (r base) getDatabase(ctx ContextInterface, opts ...Options) *gorm.DB {
+func (r base) getDatabase(ctx iface.Context, opts ...Options) *gorm.DB {
 	var getDB = func() *gorm.DB {
-		dbAny := ctx.Context().Value("db")
+		dbAny := ctx.DBContext().Value(dbValue{})
 		if dbAny != nil {
 			dbGorm, ok := dbAny.(*gorm.DB)
 			if ok {
@@ -52,7 +55,7 @@ func (r base) getDatabase(ctx ContextInterface, opts ...Options) *gorm.DB {
 
 	db := getDB()
 	for _, opt := range opts {
-		db = opt(db)
+		db = db.Scopes(opt)
 	}
 	return db
 }

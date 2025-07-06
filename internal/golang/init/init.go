@@ -26,9 +26,9 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 		cfg: cfg,
 	}
 
-	i := 34
+	i := 39
 	if cfg.Redis {
-		i += 1
+		i += 2
 	}
 	if cfg.Firebase {
 		i += 1
@@ -63,6 +63,8 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 	go c.initCmdStart(wg, respChan)
 
 	files := []string{
+		"internal/config/env",
+
 		"internal/repository/base",
 		"internal/repository/crud",
 		"internal/repository/options",
@@ -77,8 +79,14 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 		"internal/cerror/server",
 		"internal/cerror/parameter",
 		"internal/context/context",
-		"internal/request/request",
-		"internal/request/map_query",
+		"internal/dto/request",
+		"internal/dto/map_query",
+
+		"internal/interface/context",
+		"internal/interface/env",
+		"internal/interface/log",
+		"internal/interface/request",
+
 		"pkg/helper/main",
 		"pkg/migration/migration",
 		"pkg/validator/validator",
@@ -88,6 +96,9 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 	}
 	if cfg.Firebase {
 		files = append(files, "pkg/firebase/firebase")
+	}
+	if cfg.Redis {
+		files = append(files, "internal/interface/redis")
 	}
 	for _, f := range files {
 		go c.addStatic(f, wg, respChan)

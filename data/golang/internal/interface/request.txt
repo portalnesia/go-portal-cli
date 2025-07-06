@@ -1,0 +1,18 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package iface
+
+import "gorm.io/gorm"
+
+type Request interface {
+	SetTotal(t int64)
+	ListHelper(orderValue []string, defaultValue [][]string, table string) func(db *gorm.DB) *gorm.DB
+	GetPage() int
+	GetOrder() [][]string
+	SetCursorResponse(d string)
+}

@@ -12,8 +12,8 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/favicon"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"net/http"
-	"APP_NAME/internal/config"
 	"APP_NAME/internal/cerror"
+	"APP_NAME/internal/config"
 )
 
 type Routes struct {

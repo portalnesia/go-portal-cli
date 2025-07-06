@@ -19,6 +19,9 @@ func (c *initType) initConfigRedis(wg *sync.WaitGroup, res chan<- config2.Builde
 	_, _ = color.New(color.FgBlue).Printf("Generating internal/config/redis.go\n")
 
 	src, _ := c.app.DataEmbed.ReadFile("data/golang/internal/config/redis.txt")
+	srcStr := string(src)
+	srcStr = strings.ReplaceAll(srcStr, "APP_NAME", c.cfg.Module)
+	src = []byte(srcStr)
 
 	res <- config2.Builder{
 		Static:   src,
@@ -38,7 +41,7 @@ func (c *initType) initGetter(wg *sync.WaitGroup, res chan<- config2.Builder) {
     "github.com/gofiber/fiber/v2/middleware/session"
     "github.com/redis/go-redis/v9"`)
 
-		srcStr = strings.ReplaceAll(srcStr, "{{IF_REDIS}}", `func (a *app) Redis() redis.UniversalClient {
+		srcStr = strings.ReplaceAll(srcStr, "{{IF_REDIS}}", `func (a *app) Redis() iface.RedisInterface {
 	return a.redis
 }
 
