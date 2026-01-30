@@ -8,16 +8,10 @@
 package repository
 
 import (
-	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
+	"github.com/uptrace/bun"
 )
 
-type Options func(db *gorm.DB) *gorm.DB
-
-func WithLock() Options {
-	return func(db *gorm.DB) *gorm.DB {
-		return db.Clauses(clause.Locking{
-			Strength: "UPDATE",
-		})
-	}
-}
+type InsertOptions func(db *bun.InsertQuery) *bun.InsertQuery
+type SelectOptions func(db *bun.SelectQuery) *bun.SelectQuery
+type UpdateOptions func(db *bun.UpdateQuery) *bun.UpdateQuery
+type DeleteOptions func(db *bun.DeleteQuery) *bun.DeleteQuery

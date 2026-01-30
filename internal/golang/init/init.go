@@ -8,9 +8,10 @@
 package ginit
 
 import (
+	"sync"
+
 	"go.portalnesia.com/portal-cli/internal/config"
 	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
-	"sync"
 )
 
 type initType struct {
@@ -26,7 +27,7 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 		cfg: cfg,
 	}
 
-	i := 39
+	i := 40
 	if cfg.Redis {
 		i += 2
 	}
@@ -68,6 +69,7 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 		"internal/repository/base",
 		"internal/repository/crud",
 		"internal/repository/options",
+		"internal/repository/pagination",
 		"internal/repository/repository",
 		"internal/rest/routes/routes",
 		"internal/rest/middleware/middleware",

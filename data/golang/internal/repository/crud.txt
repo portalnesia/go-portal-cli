@@ -8,94 +8,118 @@
 package repository
 
 import (
-    "APP_NAME/internal/dto"
+	"APP_NAME/internal/cerror"
 	iface "APP_NAME/internal/interface"
+
+	"github.com/uptrace/bun"
 )
 
-type DataModel interface {
-	GetAvailableOrder() [][]string
-	GetDefaultOrder() []string // [sort,order]
-	TableName() string
+type CrudRepository[Model any] interface {
+	Create(ctx iface.Context, entity *Model) error
+	GetByPK(ctx iface.Context, entity *Model) (*Model, error)
+	UpdateByPK(ctx iface.Context, entity *Model, column ...string) error
+	DeleteByPK(ctx iface.Context, entity *Model) error
 }
 
-type CrudRepository[Model DataModel, TypeID any, Filter iface.Request] interface {
-	FindOne(ctx iface.Context, query Filter, id TypeID, opts ...Options) (resp *Model, err error)
-	FindAll(ctx iface.Context, query Filter, opts ...Options) (resp []Model, err error)
-	Create(ctx iface.Context, query Filter, data *Model, opts ...Options) (err error)
-	Update(ctx iface.Context, query Filter, data *Model, opts ...Options) (err error)
-	Delete(ctx iface.Context, query Filter, id TypeID, opts ...Options) (err error)
-	Count(ctx iface.Context, opts ...Options) (total int64, err error)
-	ManualFirst(ctx iface.Context, opts ...Options) (resp *Model, err error)
-}
-
-type crudRepository[Model DataModel, TypeID any, Filter iface.Request] struct {
+type crudRepository[Model any] struct {
 	base
 }
 
-func (r crudRepository[Model, TypeID, Filter]) FindOne(ctx iface.Context, _ Filter, id TypeID, opts ...Options) (resp *Model, err error) {
-	db := r.getDatabase(ctx, opts...)
-
-	if err = db.Where("id = ?", id).First(&resp).Error; err != nil {
-		return nil, err
-	}
-
-	return
+func (r crudRepository[Model]) Create(ctx iface.Context, entity *Model) error {
+	db := r.getDatabase(ctx)
+	_, err := db.NewInsert().
+		Model(entity).
+		Exec(ctx.DBContext())
+	return err
 }
 
-func (r crudRepository[Model, TypeID, Filter]) FindAll(ctx iface.Context, query Filter, opts ...Options) (resp []Model, err error) {
-	var tmp Model
-	db := r.getDatabase(ctx, opts...).Model(tmp)
+func (r crudRepository[Model]) internalGet(ctx iface.Context, entity *Model, opts ...SelectOptions) (*Model, error) {
+	var result Model
+	db := r.getDatabase(ctx)
+	query := db.NewSelect().Model(entity)
 
-	var total int64
-	db.Model(&tmp).Count(&total)
-	query.SetTotal(total)
-
-	if err = db.Scopes(query.ListHelper(tmp.GetDefaultOrder(), tmp.GetAvailableOrder(), tmp.TableName())).Find(&resp).Error; err != nil {
-		return nil, err
-	}
-
-	if query.GetPage() == 0 {
-		lenData := len(resp)
-		if lenData > 0 {
-			cursorResponse, _ := dto.ExtractValuesByColumns(&resp[lenData-1], query.GetOrder())
-			query.SetCursorResponse(cursorResponse)
+	if opts != nil && len(opts) > 0 {
+		for _, opt := range opts {
+			query = opt(query)
 		}
 	}
 
-	if len(resp) == 0 {
-		resp = make([]Model, 0)
+	err := query.
+		Scan(ctx.DBContext(), &result)
+
+	return &result, err
+}
+
+func (r crudRepository[Model]) GetByPK(ctx iface.Context, entity *Model) (*Model, error) {
+	return r.internalGet(ctx, entity, func(db *bun.SelectQuery) *bun.SelectQuery {
+		return db.WherePK()
+	})
+}
+
+func (r crudRepository[Model]) internalUpdate(ctx iface.Context, entity *Model, column []string, opts ...UpdateOptions) error {
+	db := r.getDatabase(ctx)
+
+	query := db.NewUpdate().Model(entity)
+
+	if column != nil && len(column) > 0 {
+		query = query.Column(column...)
 	}
 
-	return
+	if opts != nil && len(opts) > 0 {
+		for _, opt := range opts {
+			query = opt(query)
+		}
+	}
+
+	_, err := query.Exec(ctx.DBContext())
+	return err
 }
 
-func (r crudRepository[Model, TypeID, Filter]) Create(ctx iface.Context, _ Filter, data *Model, opts ...Options) (err error) {
-	db := r.getDatabase(ctx, opts...)
-
-	return db.Create(&data).Error
+func (r crudRepository[Model]) UpdateByPK(ctx iface.Context, entity *Model, column ...string) error {
+	return r.internalUpdate(ctx, entity, column, func(db *bun.UpdateQuery) *bun.UpdateQuery {
+		return db.WherePK()
+	})
 }
 
-func (r crudRepository[Model, TypeID, Filter]) Update(ctx iface.Context, _ Filter, data *Model, opts ...Options) (err error) {
-	db := r.getDatabase(ctx, opts...)
+func (r crudRepository[Model]) internalDelete(ctx iface.Context, entity *Model, opts ...DeleteOptions) error {
+	db := r.getDatabase(ctx)
 
-	return db.Save(&data).Error
+	query := db.NewDelete().Model(entity)
+
+	if opts != nil && len(opts) > 0 {
+		for _, opt := range opts {
+			query = opt(query)
+		}
+	}
+
+	_, err := query.Exec(ctx.DBContext())
+	return err
 }
 
-func (r crudRepository[Model, TypeID, Filter]) Delete(ctx iface.Context, _ Filter, id TypeID, opts ...Options) (err error) {
-	var tmp Model
-	db := r.getDatabase(ctx, opts...)
-
-	return db.Where("id = ?", id).Delete(&tmp).Error
+func (r crudRepository[Model]) DeleteByPK(ctx iface.Context, entity *Model) error {
+	return r.internalDelete(ctx, entity, func(db *bun.DeleteQuery) *bun.DeleteQuery {
+		return db.WherePK()
+	})
 }
 
-func (r crudRepository[Model, TypeID, Filter]) Count(ctx iface.Context, opts ...Options) (total int64, err error) {
-	var tmp Model
-	err = r.getDatabase(ctx, opts...).Model(&tmp).Count(&total).Error
-	return
-}
+func (r crudRepository[Model]) internalUpsert(ctx iface.Context, entity *Model, getWhere SelectOptions, upsertColumn ...string) error {
+	db := r.getDatabase(ctx)
 
-func (r crudRepository[Model, TypeID, Filter]) ManualFirst(ctx iface.Context, opts ...Options) (resp *Model, err error) {
-	var tmp Model
-	err = r.getDatabase(ctx, opts...).Model(&tmp).First(&resp).Error
-	return
+	data, err := r.internalGet(ctx, entity, getWhere)
+	if err != nil {
+		if !cerror.IsNotFound(err) {
+			return err
+		}
+
+		// Create new
+		_, err = db.NewInsert().Model(&entity).Exec(ctx.DBContext())
+		return err
+	}
+
+	query := db.NewUpdate().Model(&data).WherePK()
+	if len(upsertColumn) > 0 {
+		query = query.Column(upsertColumn...)
+	}
+	_, err = query.Exec(ctx.DBContext())
+	return err
 }

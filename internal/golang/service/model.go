@@ -9,13 +9,15 @@ package service
 
 import (
 	"fmt"
-	"github.com/dave/dst"
-	"github.com/fatih/color"
-	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
-	"go.portalnesia.com/utils"
 	"go/token"
 	"strings"
 	"sync"
+
+	"github.com/dave/dst"
+	"github.com/fatih/color"
+	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
+	"go.portalnesia.com/portal-cli/pkg/helper"
+	"go.portalnesia.com/utils"
 )
 
 func (s *addRepository) addRepositoryModel(wg *sync.WaitGroup, res chan<- config2.Builder) {
@@ -23,6 +25,10 @@ func (s *addRepository) addRepositoryModel(wg *sync.WaitGroup, res chan<- config
 
 	_, _ = color.New(color.FgBlue).Printf("Generating model\n")
 	serviceName := strings.ReplaceAll(utils.Ucwords(strings.ReplaceAll(s.cfg.Name, "_", " ")), " ", "")
+
+	pkgImport := []string{
+		`"github.com/uptrace/bun"`,
+	}
 
 	decls := make([]dst.Decl, 0)
 
@@ -33,37 +39,20 @@ func (s *addRepository) addRepositoryModel(wg *sync.WaitGroup, res chan<- config
 			&dst.TypeSpec{
 				Name: dst.NewIdent(serviceName),
 				Type: &dst.StructType{
-					Fields: &dst.FieldList{},
-				},
-			},
-		},
-	})
-
-	// func (User) TableName() string { return "user" }
-	decls = append(decls, &dst.FuncDecl{
-		Recv: &dst.FieldList{
-			List: []*dst.Field{
-				{
-					Type: dst.NewIdent(serviceName),
-				},
-			},
-		},
-		Name: dst.NewIdent("TableName"),
-		Type: &dst.FuncType{
-			Params: &dst.FieldList{},
-			Results: &dst.FieldList{
-				List: []*dst.Field{
-					{Type: dst.NewIdent("string")},
-				},
-			},
-		},
-		Body: &dst.BlockStmt{
-			List: []dst.Stmt{
-				&dst.ReturnStmt{
-					Results: []dst.Expr{
-						&dst.BasicLit{
-							Kind:  token.STRING,
-							Value: fmt.Sprintf(`"%s"`, strings.ToLower(s.cfg.Name)),
+					Fields: &dst.FieldList{
+						List: []*dst.Field{
+							{
+								// Field ini tidak punya Name karena merupakan Embedding (Anonymous Field)
+								Type: &dst.SelectorExpr{
+									X:   dst.NewIdent("bun"),
+									Sel: dst.NewIdent("BaseModel"),
+								},
+								// Tag harus dibungkus dengan backtick di dalam string literal
+								Tag: &dst.BasicLit{
+									Kind:  token.STRING,
+									Value: fmt.Sprintf("`bun:\"table:%s\"`", strings.ToLower(s.cfg.Name)),
+								},
+							},
 						},
 					},
 				},
@@ -165,6 +154,8 @@ func (s *addRepository) addRepositoryModel(wg *sync.WaitGroup, res chan<- config
 		decls[i].Decorations().Before = dst.EmptyLine
 	}
 
+	imports := helper.GenImport(pkgImport...)
+	decls = append([]dst.Decl{imports.GenDeclDst()}, decls...)
 	file := &dst.File{
 		Name:  dst.NewIdent("model"),
 		Decls: decls,

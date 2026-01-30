@@ -9,16 +9,17 @@ package service
 
 import (
 	"fmt"
+	"go/parser"
+	"go/token"
+	"strings"
+	"sync"
+
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"github.com/fatih/color"
 	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
 	"go.portalnesia.com/portal-cli/pkg/helper"
 	"go.portalnesia.com/utils"
-	"go/parser"
-	"go/token"
-	"strings"
-	"sync"
 )
 
 func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- config2.Builder) {
@@ -31,7 +32,6 @@ func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- conf
 	_, _ = color.New(color.FgBlue).Printf("Generating repository\n")
 	pkgImport := []string{
 		fmt.Sprintf(`"%s/internal/model"`, s.cfg.Module),
-		fmt.Sprintf(`"%s/internal/dto"`, s.cfg.Module),
 	}
 
 	decls := make([]dst.Decl, 0)
@@ -52,13 +52,6 @@ func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- conf
 										&dst.SelectorExpr{
 											X:   dst.NewIdent("model"),
 											Sel: dst.NewIdent(serviceName),
-										},
-										dst.NewIdent("string"),
-										&dst.StarExpr{
-											X: &dst.SelectorExpr{
-												X:   dst.NewIdent("dto"),
-												Sel: dst.NewIdent("Request"),
-											},
 										},
 									},
 								},
@@ -86,13 +79,6 @@ func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- conf
 										&dst.SelectorExpr{
 											X:   dst.NewIdent("model"),
 											Sel: dst.NewIdent(serviceName),
-										},
-										dst.NewIdent("string"),
-										&dst.StarExpr{
-											X: &dst.SelectorExpr{
-												X:   dst.NewIdent("dto"),
-												Sel: dst.NewIdent("Request"),
-											},
 										},
 									},
 								},
@@ -138,13 +124,6 @@ func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- conf
 											&dst.SelectorExpr{
 												X:   dst.NewIdent("model"),
 												Sel: dst.NewIdent(serviceName),
-											},
-											dst.NewIdent("string"),
-											&dst.StarExpr{
-												X: &dst.SelectorExpr{
-													X:   dst.NewIdent("dto"),
-													Sel: dst.NewIdent("Request"),
-												},
 											},
 										},
 									},

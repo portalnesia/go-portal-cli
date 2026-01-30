@@ -8,9 +8,10 @@
 package service
 
 import (
+	"sync"
+
 	"go.portalnesia.com/portal-cli/internal/config"
 	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
-	"sync"
 )
 
 type addRepository struct {

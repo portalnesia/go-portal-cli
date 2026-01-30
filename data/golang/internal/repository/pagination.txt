@@ -1,0 +1,73 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package repository
+
+import (
+	iface "APP_NAME/internal/interface"
+	"APP_NAME/internal/dto"
+)
+
+type ModelPagination interface {
+	GetAvailableOrder() [][]string
+	GetDefaultOrder() []string // [sort,order]
+}
+
+type PaginationRepository[Model ModelPagination, Filter iface.Request] interface {
+	Paginate(ctx iface.Context, query Filter, withCount bool, opts ...SelectOptions) (resp []Model, err error)
+}
+
+type paginationRepository[Model ModelPagination, Filter iface.Request] struct {
+	base
+}
+
+func newPaginationRepository[Model ModelPagination, Filter iface.Request](bs base) PaginationRepository[Model, Filter] {
+	return &paginationRepository[Model, Filter]{
+		base: bs,
+	}
+}
+
+// Paginate implements PaginationRepository
+func (r paginationRepository[Model, Filter]) Paginate(ctx iface.Context, query Filter, noCount bool, opts ...SelectOptions) (resp []Model, err error) {
+	var tmp Model
+	db := r.getDatabase(ctx)
+
+	dbSelect := db.NewSelect().Model(&tmp)
+
+	if !noCount {
+		dbCount := db.NewSelect().Model(&tmp)
+		for _, opt := range opts {
+			dbCount = opt(dbCount)
+		}
+
+		total, _ := dbCount.Count(ctx.DBContext())
+		query.SetTotal(int64(total))
+	}
+
+	for _, opt := range opts {
+		dbSelect = opt(dbSelect)
+	}
+	dbSelect = query.ListHelper(tmp.GetDefaultOrder(), tmp.GetAvailableOrder())(dbSelect)
+	err = dbSelect.Scan(ctx.DBContext(), &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if query.GetPage() == 0 {
+		lenData := len(resp)
+		if lenData > 0 && lenData == query.GetPageSize() {
+			cursorResponse, _ := dto.ExtractValuesByColumns(&resp[lenData-1], query.GetOrder())
+			query.SetCursorResponse(cursorResponse)
+		}
+	}
+
+	if len(resp) == 0 {
+		resp = make([]Model, 0)
+	}
+
+	return
+}

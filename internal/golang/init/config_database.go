@@ -8,12 +8,13 @@
 package ginit
 
 import (
-	"github.com/fatih/color"
-	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
-	"go.portalnesia.com/portal-cli/pkg/helper"
 	"go/ast"
 	"go/token"
 	"sync"
+
+	"github.com/fatih/color"
+	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
+	"go.portalnesia.com/portal-cli/pkg/helper"
 )
 
 func (c *initType) initConfigDatabase(wg *sync.WaitGroup, res chan<- config2.Builder) {
@@ -21,127 +22,197 @@ func (c *initType) initConfigDatabase(wg *sync.WaitGroup, res chan<- config2.Bui
 	_, _ = color.New(color.FgBlue).Printf("Generating internal/config/database.go\n")
 
 	pkgImport := []string{
+		`"context"`,
+		`"database/sql"`,
 		`"fmt"`,
-		`"github.com/dromara/carbon/v2"`,
-		`nativeLog "log"`,
-		`"os"`,
 		`"time"`,
+
+		`sqlDriver "github.com/go-sql-driver/mysql"`,
 		`"github.com/spf13/viper"`,
-		`"gorm.io/gorm"`,
-		`"gorm.io/gorm/logger"`,
-		`othermysql "github.com/go-sql-driver/mysql"`,
-		`"gorm.io/driver/mysql"`,
+		`"github.com/uptrace/bun"`,
+		`"github.com/uptrace/bun/dialect/mysqldialect"`,
 	}
 	decls := make([]ast.Decl, 0)
 
+	decls = append(decls, &ast.GenDecl{
+		Tok: token.TYPE,
+		Specs: []ast.Spec{
+			&ast.TypeSpec{
+				Name: ast.NewIdent("SqlLogger"),
+				Type: &ast.StructType{
+					Fields: &ast.FieldList{},
+				},
+			},
+		},
+	})
 	decls = append(decls, &ast.FuncDecl{
-		Name: ast.NewIdent("getDatabaseLogger"),
+		Doc: &ast.CommentGroup{
+			List: []*ast.Comment{
+				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
+			},
+		},
+		Recv: &ast.FieldList{
+			List: []*ast.Field{
+				{
+					Names: []*ast.Ident{ast.NewIdent("h")},
+					Type:  &ast.StarExpr{X: ast.NewIdent("SqlLogger")},
+				},
+			},
+		},
+		Name: ast.NewIdent("BeforeQuery"),
 		Type: &ast.FuncType{
 			Params: &ast.FieldList{
 				List: []*ast.Field{
 					{
-						Names: []*ast.Ident{ast.NewIdent("silent")},
-						Type:  &ast.Ellipsis{Elt: ast.NewIdent("bool")},
+						Names: []*ast.Ident{ast.NewIdent("ctx")},
+						Type:  &ast.SelectorExpr{X: ast.NewIdent("context"), Sel: ast.NewIdent("Context")},
+					},
+					{
+						Names: []*ast.Ident{ast.NewIdent("event")}, Type: &ast.StarExpr{
+							X: &ast.SelectorExpr{
+								X: ast.NewIdent("bun"), Sel: ast.NewIdent("QueryEvent"),
+							},
+						},
 					},
 				},
 			},
 			Results: &ast.FieldList{
 				List: []*ast.Field{
+					{Type: &ast.SelectorExpr{X: ast.NewIdent("context"), Sel: ast.NewIdent("Context")}},
+				},
+			},
+		},
+		Body: &ast.BlockStmt{
+			List: []ast.Stmt{
+				&ast.ReturnStmt{Results: []ast.Expr{ast.NewIdent("ctx")}},
+			},
+		},
+	})
+	decls = append(decls, &ast.FuncDecl{
+		Doc: &ast.CommentGroup{
+			List: []*ast.Comment{
+				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
+			},
+		},
+		Recv: &ast.FieldList{
+			List: []*ast.Field{
+				{
+					Names: []*ast.Ident{ast.NewIdent("h")},
+					Type:  &ast.StarExpr{X: ast.NewIdent("SqlLogger")},
+				},
+			},
+		},
+		Name: ast.NewIdent("AfterQuery"),
+		Type: &ast.FuncType{
+			Params: &ast.FieldList{
+				List: []*ast.Field{
 					{
-						Type: ast.NewIdent("logger.Interface"),
+						Names: []*ast.Ident{ast.NewIdent("ctx")},
+						Type:  &ast.SelectorExpr{X: ast.NewIdent("context"), Sel: ast.NewIdent("Context")},
+					},
+					{
+						Names: []*ast.Ident{ast.NewIdent("event")}, Type: &ast.StarExpr{
+							X: &ast.SelectorExpr{
+								X: ast.NewIdent("bun"), Sel: ast.NewIdent("QueryEvent"),
+							},
+						},
 					},
 				},
 			},
 		},
 		Body: &ast.BlockStmt{
 			List: []ast.Stmt{
+				// query := event.Query
 				&ast.AssignStmt{
-					Lhs: []ast.Expr{ast.NewIdent("level")},
+					Lhs: []ast.Expr{ast.NewIdent("query")},
+					Tok: token.DEFINE,
+					Rhs: []ast.Expr{&ast.SelectorExpr{X: ast.NewIdent("event"), Sel: ast.NewIdent("Query")}},
+				},
+				// dur := time.Since(event.StartTime)
+				&ast.AssignStmt{
+					Lhs: []ast.Expr{ast.NewIdent("dur")},
 					Tok: token.DEFINE,
 					Rhs: []ast.Expr{
-						&ast.SelectorExpr{
-							X:   ast.NewIdent("logger"),
-							Sel: ast.NewIdent("Error"),
+						&ast.CallExpr{
+							Fun: &ast.SelectorExpr{X: ast.NewIdent("time"), Sel: ast.NewIdent("Since")},
+							Args: []ast.Expr{
+								&ast.SelectorExpr{
+									X: ast.NewIdent("event"), Sel: ast.NewIdent("StartTime"),
+								},
+							},
 						},
 					},
 				},
+				// if event.Err != nil { ... } else if ...
 				&ast.IfStmt{
 					Cond: &ast.BinaryExpr{
-						X: &ast.CallExpr{
-							Fun:  ast.NewIdent("len"),
-							Args: []ast.Expr{ast.NewIdent("silent")},
-						},
-						Op: token.GTR,
-						Y: &ast.BasicLit{
-							Kind:  token.INT,
-							Value: "0",
-						},
+						X:  &ast.SelectorExpr{X: ast.NewIdent("event"), Sel: ast.NewIdent("Err")},
+						Op: token.NEQ,
+						Y:  ast.NewIdent("nil"),
 					},
 					Body: &ast.BlockStmt{
 						List: []ast.Stmt{
-							&ast.AssignStmt{
-								Lhs: []ast.Expr{ast.NewIdent("level")},
-								Tok: token.ASSIGN,
-								Rhs: []ast.Expr{
-									&ast.SelectorExpr{
-										X:   ast.NewIdent("logger"),
-										Sel: ast.NewIdent("Silent"),
+							&ast.ExprStmt{
+								X: &ast.CallExpr{
+									Fun: &ast.SelectorExpr{
+										X: &ast.CallExpr{
+											Fun: &ast.SelectorExpr{
+												X: &ast.CallExpr{
+													Fun: &ast.SelectorExpr{
+														X: ast.NewIdent("log"), Sel: ast.NewIdent("Error"),
+													},
+													Args: []ast.Expr{
+														&ast.SelectorExpr{
+															X: ast.NewIdent("event"), Sel: ast.NewIdent("Err"),
+														}, helper.StrLit("db"),
+													},
+												},
+												Sel: ast.NewIdent("Dur"),
+											},
+											Args: []ast.Expr{helper.StrLit("duration"), ast.NewIdent("dur")},
+										},
+										Sel: ast.NewIdent("Msg"),
 									},
+									Args: []ast.Expr{ast.NewIdent("query")},
 								},
 							},
 						},
 					},
-				},
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent("logger"),
-								Sel: ast.NewIdent("New"),
-							},
-							Args: []ast.Expr{
-								&ast.CallExpr{
-									Fun: &ast.SelectorExpr{
-										X:   ast.NewIdent("nativeLog"),
-										Sel: ast.NewIdent("New"),
-									},
-									Args: []ast.Expr{
-										ast.NewIdent("os.Stdout"),
-										&ast.BasicLit{
-											Kind:  token.STRING,
-											Value: "\"\\r\\n\"",
-										},
-										&ast.SelectorExpr{
-											X:   ast.NewIdent("nativeLog"),
-											Sel: ast.NewIdent("LstdFlags"),
-										},
-									},
-								},
-								&ast.CompositeLit{
-									Type: &ast.SelectorExpr{
-										X:   ast.NewIdent("logger"),
-										Sel: ast.NewIdent("Config"),
-									},
-									Elts: []ast.Expr{
-										&ast.KeyValueExpr{
-											Key: ast.NewIdent("SlowThreshold"),
-											Value: &ast.SelectorExpr{
-												X:   ast.NewIdent("time"),
-												Sel: ast.NewIdent("Second"),
+					Else: &ast.IfStmt{
+						Cond: &ast.CallExpr{
+							Fun:  &ast.SelectorExpr{X: ast.NewIdent("viper"), Sel: ast.NewIdent("GetBool")},
+							Args: []ast.Expr{helper.StrLit("config.log_db")},
+						},
+						Body: &ast.BlockStmt{
+							List: []ast.Stmt{
+								&ast.ExprStmt{
+									X: &ast.CallExpr{
+										Fun: &ast.SelectorExpr{
+											X: &ast.CallExpr{
+												Fun: &ast.SelectorExpr{
+													X: &ast.CallExpr{
+														Fun: &ast.SelectorExpr{
+															X: ast.NewIdent("log"), Sel: ast.NewIdent("Info"),
+														},
+														Args: []ast.Expr{
+															&ast.BasicLit{
+																Kind:  token.STRING,
+																Value: `"db"`,
+															},
+														},
+													},
+													Sel: ast.NewIdent("Dur"),
+												},
+												Args: []ast.Expr{
+													&ast.BasicLit{
+														Kind:  token.STRING,
+														Value: `"duration"`,
+													}, ast.NewIdent("dur"),
+												},
 											},
+											Sel: ast.NewIdent("Msg"),
 										},
-										&ast.KeyValueExpr{
-											Key:   ast.NewIdent("LogLevel"),
-											Value: ast.NewIdent("level"),
-										},
-										&ast.KeyValueExpr{
-											Key:   ast.NewIdent("IgnoreRecordNotFoundError"),
-											Value: ast.NewIdent("true"),
-										},
-										&ast.KeyValueExpr{
-											Key:   ast.NewIdent("Colorful"),
-											Value: ast.NewIdent("true"),
-										},
+										Args: []ast.Expr{ast.NewIdent("query")},
 									},
 								},
 							},
@@ -155,24 +226,14 @@ func (c *initType) initConfigDatabase(wg *sync.WaitGroup, res chan<- config2.Bui
 	// MYSQL
 	decls = append(decls, &ast.FuncDecl{
 		Name: ast.NewIdent("connectMysql"),
-		Doc: &ast.CommentGroup{
-			List: []*ast.Comment{
-				{Text: "//"}, // Komentar kosong, yang nanti diformat jadi newline
-			},
-		},
 		Type: &ast.FuncType{
 			Params: &ast.FieldList{
 				List: []*ast.Field{
 					{
 						Names: []*ast.Ident{ast.NewIdent("dbChan")},
 						Type: &ast.ChanType{
-							Dir: ast.SEND,
-							Value: &ast.StarExpr{
-								X: &ast.SelectorExpr{
-									X:   ast.NewIdent("gorm"),
-									Sel: ast.NewIdent("DB"),
-								},
-							},
+							Dir:   ast.SEND | ast.RECV,
+							Value: &ast.StarExpr{X: &ast.SelectorExpr{X: ast.NewIdent("bun"), Sel: ast.NewIdent("DB")}},
 						},
 					},
 				},
@@ -180,128 +241,88 @@ func (c *initType) initConfigDatabase(wg *sync.WaitGroup, res chan<- config2.Bui
 		},
 		Body: &ast.BlockStmt{
 			List: []ast.Stmt{
-				// mysqlconfig := othermysql.Config{...}
+				// location, err := time.LoadLocation("Asia/Jakarta")
 				&ast.AssignStmt{
-					Lhs: []ast.Expr{ast.NewIdent("mysqlconfig")},
+					Lhs: []ast.Expr{ast.NewIdent("location"), ast.NewIdent("err")},
 					Tok: token.DEFINE,
 					Rhs: []ast.Expr{
-						&ast.CompositeLit{
-							Type: &ast.SelectorExpr{
-								X:   ast.NewIdent("othermysql"),
-								Sel: ast.NewIdent("Config"),
-							},
-							Elts: []ast.Expr{
-								&ast.KeyValueExpr{
-									Key: ast.NewIdent("User"),
-									Value: &ast.CallExpr{
-										Fun: &ast.SelectorExpr{
-											X:   ast.NewIdent("viper"),
-											Sel: ast.NewIdent("GetString"),
-										},
-										Args: []ast.Expr{
-											&ast.BasicLit{
-												Kind:  token.STRING,
-												Value: "\"db.user\"",
-											},
-										},
-									},
-								},
-								&ast.KeyValueExpr{
-									Key: ast.NewIdent("Passwd"),
-									Value: &ast.CallExpr{
-										Fun: &ast.SelectorExpr{
-											X:   ast.NewIdent("viper"),
-											Sel: ast.NewIdent("GetString"),
-										},
-										Args: []ast.Expr{
-											&ast.BasicLit{
-												Kind:  token.STRING,
-												Value: "\"db.password\"",
-											},
-										},
-									},
-								},
-								&ast.KeyValueExpr{
-									Key: ast.NewIdent("DBName"),
-									Value: &ast.CallExpr{
-										Fun: &ast.SelectorExpr{
-											X:   ast.NewIdent("viper"),
-											Sel: ast.NewIdent("GetString"),
-										},
-										Args: []ast.Expr{
-											&ast.BasicLit{
-												Kind:  token.STRING,
-												Value: "\"db.database\"",
-											},
-										},
-									},
-								},
-								&ast.KeyValueExpr{
-									Key: ast.NewIdent("Net"),
-									Value: &ast.BasicLit{
-										Kind:  token.STRING,
-										Value: "\"tcp\"",
-									},
-								},
-								&ast.KeyValueExpr{
-									Key: ast.NewIdent("Addr"),
-									Value: &ast.CallExpr{
-										Fun: &ast.SelectorExpr{
-											X:   ast.NewIdent("fmt"),
-											Sel: ast.NewIdent("Sprintf"),
-										},
-										Args: []ast.Expr{
-											&ast.BasicLit{
-												Kind:  token.STRING,
-												Value: "\"%s:%d\"",
-											},
-											&ast.CallExpr{
-												Fun: &ast.SelectorExpr{
-													X:   ast.NewIdent("viper"),
-													Sel: ast.NewIdent("GetString"),
-												},
-												Args: []ast.Expr{
-													&ast.BasicLit{
-														Kind:  token.STRING,
-														Value: "\"db.host\"",
-													},
-												},
-											},
-											&ast.CallExpr{
-												Fun: &ast.SelectorExpr{
-													X:   ast.NewIdent("viper"),
-													Sel: ast.NewIdent("GetInt"),
-												},
-												Args: []ast.Expr{
-													&ast.BasicLit{
-														Kind:  token.STRING,
-														Value: "\"db.port\"",
-													},
-												},
-											},
-										},
-									},
-								},
-								&ast.KeyValueExpr{
-									Key:   ast.NewIdent("ParseTime"),
-									Value: ast.NewIdent("true"),
-								},
-								&ast.KeyValueExpr{
-									Key: ast.NewIdent("Loc"),
-									Value: &ast.SelectorExpr{
-										X:   ast.NewIdent("time"),
-										Sel: ast.NewIdent("UTC"),
-									},
-								},
-								&ast.KeyValueExpr{
-									Key:   ast.NewIdent("AllowNativePasswords"),
-									Value: ast.NewIdent("true"),
+						&ast.CallExpr{
+							Fun:  &ast.SelectorExpr{X: ast.NewIdent("time"), Sel: ast.NewIdent("LoadLocation")},
+							Args: []ast.Expr{helper.StrLit("Asia/Jakarta")},
+						},
+					},
+				},
+				// if err != nil { panic(err) }
+				&ast.IfStmt{
+					Cond: &ast.BinaryExpr{X: ast.NewIdent("err"), Op: token.NEQ, Y: ast.NewIdent("nil")},
+					Body: &ast.BlockStmt{
+						List: []ast.Stmt{
+							&ast.ExprStmt{
+								X: &ast.CallExpr{
+									Fun: ast.NewIdent("panic"), Args: []ast.Expr{ast.NewIdent("err")},
 								},
 							},
 						},
 					},
 				},
-
+				// mysqlconfig := sqlDriver.Config{ ... }
+				&ast.AssignStmt{
+					Lhs: []ast.Expr{ast.NewIdent("mysqlconfig")},
+					Tok: token.DEFINE,
+					Rhs: []ast.Expr{
+						&ast.CompositeLit{
+							Type: &ast.SelectorExpr{X: ast.NewIdent("sqlDriver"), Sel: ast.NewIdent("Config")},
+							Elts: []ast.Expr{
+								&ast.KeyValueExpr{
+									Key: ast.NewIdent("User"), Value: &ast.CallExpr{
+										Fun: &ast.SelectorExpr{
+											X: ast.NewIdent("viper"), Sel: ast.NewIdent("GetString"),
+										}, Args: []ast.Expr{helper.StrLit("db.mysql.user")},
+									},
+								},
+								&ast.KeyValueExpr{
+									Key: ast.NewIdent("Passwd"), Value: &ast.CallExpr{
+										Fun: &ast.SelectorExpr{
+											X: ast.NewIdent("viper"), Sel: ast.NewIdent("GetString"),
+										}, Args: []ast.Expr{helper.StrLit("db.mysql.password")},
+									},
+								},
+								&ast.KeyValueExpr{
+									Key: ast.NewIdent("DBName"), Value: &ast.CallExpr{
+										Fun: &ast.SelectorExpr{
+											X: ast.NewIdent("viper"), Sel: ast.NewIdent("GetString"),
+										}, Args: []ast.Expr{helper.StrLit("db.mysql.database")},
+									},
+								},
+								&ast.KeyValueExpr{Key: ast.NewIdent("Net"), Value: helper.StrLit("tcp")},
+								&ast.KeyValueExpr{
+									Key: ast.NewIdent("Addr"),
+									Value: &ast.CallExpr{
+										Fun: &ast.SelectorExpr{X: ast.NewIdent("fmt"), Sel: ast.NewIdent("Sprintf")},
+										Args: []ast.Expr{
+											helper.StrLit("%s:%d"),
+											&ast.CallExpr{
+												Fun: &ast.SelectorExpr{
+													X: ast.NewIdent("viper"), Sel: ast.NewIdent("GetString"),
+												}, Args: []ast.Expr{helper.StrLit("db.mysql.host")},
+											},
+											&ast.CallExpr{
+												Fun: &ast.SelectorExpr{
+													X: ast.NewIdent("viper"), Sel: ast.NewIdent("GetInt"),
+												}, Args: []ast.Expr{helper.StrLit("db.mysql.port")},
+											},
+										},
+									},
+								},
+								&ast.KeyValueExpr{Key: ast.NewIdent("ParseTime"), Value: ast.NewIdent("true")},
+								&ast.KeyValueExpr{Key: ast.NewIdent("Loc"), Value: ast.NewIdent("location")},
+								&ast.KeyValueExpr{
+									Key: ast.NewIdent("AllowNativePasswords"), Value: ast.NewIdent("true"),
+								},
+							},
+						},
+					},
+				},
 				// dsn := mysqlconfig.FormatDSN()
 				&ast.AssignStmt{
 					Lhs: []ast.Expr{ast.NewIdent("dsn")},
@@ -309,126 +330,25 @@ func (c *initType) initConfigDatabase(wg *sync.WaitGroup, res chan<- config2.Bui
 					Rhs: []ast.Expr{
 						&ast.CallExpr{
 							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent("mysqlconfig"),
-								Sel: ast.NewIdent("FormatDSN"),
+								X: ast.NewIdent("mysqlconfig"), Sel: ast.NewIdent("FormatDSN"),
 							},
 						},
 					},
 				},
-
-				// portalnesia := mysql.New(mysql.Config{DSN: dsn})
+				// sqldb, err := sql.Open("mysql", dsn)
 				&ast.AssignStmt{
-					Lhs: []ast.Expr{ast.NewIdent("portalnesia")},
+					Lhs: []ast.Expr{ast.NewIdent("sqldb"), ast.NewIdent("err")},
 					Tok: token.DEFINE,
 					Rhs: []ast.Expr{
 						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent("mysql"),
-								Sel: ast.NewIdent("New"),
-							},
-							Args: []ast.Expr{
-								&ast.CompositeLit{
-									Type: &ast.SelectorExpr{
-										X:   ast.NewIdent("mysql"),
-										Sel: ast.NewIdent("Config"),
-									},
-									Elts: []ast.Expr{
-										&ast.KeyValueExpr{
-											Key:   ast.NewIdent("DSN"),
-											Value: ast.NewIdent("dsn"),
-										},
-									},
-								},
-							},
+							Fun:  &ast.SelectorExpr{X: ast.NewIdent("sql"), Sel: ast.NewIdent("Open")},
+							Args: []ast.Expr{helper.StrLit("mysql"), ast.NewIdent("dsn")},
 						},
 					},
 				},
-
-				// database, err := gorm.Open(portalnesia, &gorm.Config{...})
-				&ast.AssignStmt{
-					Lhs: []ast.Expr{
-						ast.NewIdent("database"),
-						ast.NewIdent("err"),
-					},
-					Tok: token.DEFINE,
-					Rhs: []ast.Expr{
-						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent("gorm"),
-								Sel: ast.NewIdent("Open"),
-							},
-							Args: []ast.Expr{
-								ast.NewIdent("portalnesia"),
-								&ast.UnaryExpr{
-									Op: token.AND,
-									X: &ast.CompositeLit{
-										Type: &ast.SelectorExpr{
-											X:   ast.NewIdent("gorm"),
-											Sel: ast.NewIdent("Config"),
-										},
-										Elts: []ast.Expr{
-											&ast.KeyValueExpr{
-												Key:   ast.NewIdent("PrepareStmt"),
-												Value: ast.NewIdent("true"),
-											},
-											&ast.KeyValueExpr{
-												Key: ast.NewIdent("Logger"),
-												Value: &ast.CallExpr{
-													Fun: ast.NewIdent("getDatabaseLogger"),
-												},
-											},
-											&ast.KeyValueExpr{
-												Key: ast.NewIdent("NowFunc"),
-												Value: &ast.FuncLit{
-													Type: &ast.FuncType{
-														Params: &ast.FieldList{},
-														Results: &ast.FieldList{
-															List: []*ast.Field{
-																{
-																	Type: &ast.SelectorExpr{
-																		X:   ast.NewIdent("time"),
-																		Sel: ast.NewIdent("Time"),
-																	},
-																},
-															},
-														},
-													},
-													Body: &ast.BlockStmt{
-														List: []ast.Stmt{
-															&ast.ReturnStmt{
-																Results: []ast.Expr{
-																	&ast.CallExpr{
-																		Fun: &ast.SelectorExpr{
-																			X: &ast.CallExpr{
-																				Fun: &ast.SelectorExpr{
-																					X:   ast.NewIdent("carbon"),
-																					Sel: ast.NewIdent("Now"),
-																				},
-																			},
-																			Sel: ast.NewIdent("StdTime"),
-																		},
-																	},
-																},
-															},
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-
-				// if err != nil { Log.Fatal(err, "system").Msg("Failed to initialize mysql") }
+				// if err != nil { log.Fatal(err, "system").Msg("Failed to open mysql") }
 				&ast.IfStmt{
-					Cond: &ast.BinaryExpr{
-						X:  ast.NewIdent("err"),
-						Op: token.NEQ,
-						Y:  ast.NewIdent("nil"),
-					},
+					Cond: &ast.BinaryExpr{X: ast.NewIdent("err"), Op: token.NEQ, Y: ast.NewIdent("nil")},
 					Body: &ast.BlockStmt{
 						List: []ast.Stmt{
 							&ast.ExprStmt{
@@ -436,38 +356,99 @@ func (c *initType) initConfigDatabase(wg *sync.WaitGroup, res chan<- config2.Bui
 									Fun: &ast.SelectorExpr{
 										X: &ast.CallExpr{
 											Fun: &ast.SelectorExpr{
-												X:   ast.NewIdent("log"),
-												Sel: ast.NewIdent("Fatal"),
-											},
-											Args: []ast.Expr{
-												ast.NewIdent("err"),
-												&ast.BasicLit{
-													Kind:  token.STRING,
-													Value: "\"system\"",
-												},
-											},
+												X: ast.NewIdent("log"), Sel: ast.NewIdent("Fatal"),
+											}, Args: []ast.Expr{ast.NewIdent("err"), helper.StrLit("system")},
 										},
 										Sel: ast.NewIdent("Msg"),
 									},
-									Args: []ast.Expr{
-										&ast.BasicLit{
-											Kind:  token.STRING,
-											Value: "\"Failed to initialize mysql\"",
-										},
+									Args: []ast.Expr{helper.StrLit("Failed to open mysql")},
+								},
+							},
+						},
+					},
+				},
+				// db := bun.NewDB(sqldb, mysqldialect.New())
+				&ast.AssignStmt{
+					Lhs: []ast.Expr{ast.NewIdent("db")},
+					Tok: token.DEFINE,
+					Rhs: []ast.Expr{
+						&ast.CallExpr{
+							Fun: &ast.SelectorExpr{X: ast.NewIdent("bun"), Sel: ast.NewIdent("NewDB")},
+							Args: []ast.Expr{
+								ast.NewIdent("sqldb"),
+								&ast.CallExpr{
+									Fun: &ast.SelectorExpr{
+										X: ast.NewIdent("mysqldialect"), Sel: ast.NewIdent("New"),
 									},
 								},
 							},
 						},
 					},
 				},
-
-				// dbChan <- database
-				&ast.SendStmt{
-					Chan:  ast.NewIdent("dbChan"),
-					Value: ast.NewIdent("database"),
+				// db.AddQueryHook(&SqlLogger{})
+				&ast.ExprStmt{
+					X: &ast.CallExpr{
+						Fun: &ast.SelectorExpr{X: ast.NewIdent("db"), Sel: ast.NewIdent("AddQueryHook")},
+						Args: []ast.Expr{
+							&ast.UnaryExpr{
+								Op: token.AND, X: &ast.CompositeLit{Type: ast.NewIdent("SqlLogger")},
+							},
+						},
+					},
 				},
-
-				// return
+				// db.SetMaxIdleConns(10) ... dst
+				&ast.ExprStmt{
+					X: &ast.CallExpr{
+						Fun: &ast.SelectorExpr{
+							X: ast.NewIdent("db"), Sel: ast.NewIdent("SetMaxIdleConns"),
+						}, Args: []ast.Expr{helper.IntLit(10)},
+					},
+				},
+				&ast.ExprStmt{
+					X: &ast.CallExpr{
+						Fun: &ast.SelectorExpr{
+							X: ast.NewIdent("db"), Sel: ast.NewIdent("SetMaxOpenConns"),
+						}, Args: []ast.Expr{helper.IntLit(100)},
+					},
+				},
+				&ast.ExprStmt{
+					X: &ast.CallExpr{
+						Fun:  &ast.SelectorExpr{X: ast.NewIdent("db"), Sel: ast.NewIdent("SetConnMaxLifetime")},
+						Args: []ast.Expr{&ast.SelectorExpr{X: ast.NewIdent("time"), Sel: ast.NewIdent("Hour")}},
+					},
+				},
+				// if err = db.Ping(); err != nil { ... }
+				&ast.IfStmt{
+					Init: &ast.AssignStmt{
+						Lhs: []ast.Expr{ast.NewIdent("err")}, Tok: token.ASSIGN, Rhs: []ast.Expr{
+							&ast.CallExpr{
+								Fun: &ast.SelectorExpr{
+									X: ast.NewIdent("db"), Sel: ast.NewIdent("Ping"),
+								},
+							},
+						},
+					},
+					Cond: &ast.BinaryExpr{X: ast.NewIdent("err"), Op: token.NEQ, Y: ast.NewIdent("nil")},
+					Body: &ast.BlockStmt{
+						List: []ast.Stmt{
+							&ast.ExprStmt{
+								X: &ast.CallExpr{
+									Fun: &ast.SelectorExpr{
+										X: &ast.CallExpr{
+											Fun: &ast.SelectorExpr{
+												X: ast.NewIdent("log"), Sel: ast.NewIdent("Fatal"),
+											}, Args: []ast.Expr{ast.NewIdent("err"), helper.StrLit("system")},
+										},
+										Sel: ast.NewIdent("Msg"),
+									},
+									Args: []ast.Expr{helper.StrLit("Failed to ping mysql")},
+								},
+							},
+						},
+					},
+				},
+				// dbChan <- db
+				&ast.SendStmt{Chan: ast.NewIdent("dbChan"), Value: ast.NewIdent("db")},
 				&ast.ReturnStmt{},
 			},
 		},

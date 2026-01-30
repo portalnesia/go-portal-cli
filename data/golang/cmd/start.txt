@@ -14,12 +14,12 @@ import (
 	"github.com/spf13/viper"
 	"os"
 	"os/signal"
-	"portalnesia/internal/config"
-	"portalnesia/internal/rest"
-	"portalnesia/pkg/discord"
-	"portalnesia/pkg/rabbitmq"
-	"portalnesia/pkg/telegram"
-	"portalnesia/pkg/whatsapp"
+	"APP_NAME/internal/config"
+	"APP_NAME/internal/rest"
+	"APP_NAME/pkg/discord"
+	"APP_NAME/pkg/rabbitmq"
+	"APP_NAME/pkg/telegram"
+	"APP_NAME/pkg/whatsapp"
 	"syscall"
 )
 

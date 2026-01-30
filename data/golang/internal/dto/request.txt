@@ -10,7 +10,7 @@ package dto
 import (
 	"fmt"
 	"github.com/samber/lo"
-	"gorm.io/gorm"
+	"github.com/uptrace/bun"
 	"APP_NAME/internal/context"
 	"strings"
 	"sync"
@@ -141,14 +141,14 @@ func (d *Request) Init(ctx *context.Context) {
 //
 // orderValue: array of columns that can be ordered
 // defaultValue: map[order]sort. example: {"user_login":"desc"}
-func (d *Request) ListHelper(orderValue []string, defaultValue [][]string, table string) func(db *gorm.DB) *gorm.DB {
+func (d *Request) ListHelper(orderValue []string, defaultValue [][]string) func(db *bun.SelectQuery) *bun.SelectQuery {
 	query := make([]string, 0)
 	mapOrder := make([][]string, 0) // column => sort
 	if d.OrderParsed != nil {
 		for _, order := range d.OrderParsed {
 			k, v := order[0], order[1]
 			if lo.Contains(orderValue, k) {
-				query = append(query, fmt.Sprintf("%s.%s %s", table, k, v))
+				query = append(query, fmt.Sprintf("?TableAlias.%s %s", k, v))
 			}
 		}
 		mapOrder = d.OrderParsed
@@ -156,13 +156,13 @@ func (d *Request) ListHelper(orderValue []string, defaultValue [][]string, table
 	if len(query) == 0 {
 		for _, order := range defaultValue {
 			k, v := order[0], order[1]
-			query = append(query, fmt.Sprintf("%s.%s %s", table, k, v))
+			query = append(query, fmt.Sprintf("?TableAlias.%s %s", k, v))
 		}
 		mapOrder = defaultValue
 		d.OrderParsed = defaultValue
 	}
 
-	return func(db *gorm.DB) *gorm.DB {
+	return func(db *bun.SelectQuery) *bun.SelectQuery {
 		db = db.Order(strings.Join(query, ", "))
 
 		if d.Page > 0 {

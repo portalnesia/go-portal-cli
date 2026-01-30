@@ -7,11 +7,11 @@
 
 package iface
 
-import "gorm.io/gorm"
+import "github.com/uptrace/bun"
 
 type Request interface {
 	SetTotal(t int64)
-	ListHelper(orderValue []string, defaultValue [][]string, table string) func(db *gorm.DB) *gorm.DB
+	ListHelper(orderValue []string, defaultValue [][]string) func(db *bun.SelectQuery) *bun.SelectQuery
 	GetPage() int
 	GetOrder() [][]string
 	SetCursorResponse(d string)

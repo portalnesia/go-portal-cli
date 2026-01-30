@@ -52,15 +52,13 @@ func VerifyMapQuery(encoded string) (MapQuery, error) {
 	return cursor, nil
 }
 
-// parseGormTag memecah tag gorm misal "column:foo;type:bar" → map["column":"foo",...]
-func parseGormTag(tag string) map[string]string {
-	out := make(map[string]string)
-	for _, part := range strings.Split(tag, ";") {
-		if kv := strings.SplitN(part, ":", 2); len(kv) == 2 {
-			out[kv[0]] = kv[1]
-		}
+// getColumnBun get column misal "foo,type:..." → foo
+func getColumnBun(tag string) string {
+	tagSplit := strings.Split(tag, ",")
+	if len(tagSplit) <= 0 {
+		return ""
 	}
-	return out
+	return tagSplit[0]
 }
 
 func signCursor(data map[string]any) (string, error) {
@@ -99,9 +97,8 @@ func ExtractValuesByColumns(s interface{}, sorting [][]string) (string, error) {
 
 	for i := 0; i < st.NumField(); i++ {
 		field := st.Field(i)
-		gormTag := parseGormTag(field.Tag.Get("gorm"))
-		colName, ok := gormTag["column"]
-		if !ok {
+		colName := getColumnBun(field.Tag.Get("bun"))
+    if colName == "" {
 			continue
 		}
 

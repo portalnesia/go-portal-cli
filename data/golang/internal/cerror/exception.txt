@@ -12,7 +12,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"gorm.io/gorm"
+	"database/sql"
 	"os"
 	"runtime"
 	"strings"
@@ -234,9 +234,6 @@ func IsCode(err error, code int) bool {
 	if errors.As(err, &er) {
 		return er.Code == code
 	}
-	//if errors.Is(err, gorm.ErrRecordNotFound) {
-	//	return code == ErrorNotfound
-	//}
 	return false
 }
 
@@ -249,7 +246,7 @@ func IsError(err error) (*Error, bool) {
 }
 
 func IsNotFound(err error) bool {
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if errors.Is(err, sql.ErrNoRows) {
 		return true
 	}
 	return IsCode(err, ErrorNotfound)

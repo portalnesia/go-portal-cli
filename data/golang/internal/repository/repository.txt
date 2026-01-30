@@ -8,8 +8,9 @@
 package repository
 
 import (
-	"gorm.io/gorm"
 	iface "APP_NAME/internal/interface"
+
+	"github.com/uptrace/bun"
 )
 
 type Registry struct {
@@ -17,7 +18,7 @@ type Registry struct {
 }
 
 type NewRepositoryConfig struct {
-	DB    *gorm.DB
+	DB    bun.IDB
 	Env   iface.Env
 	Log   iface.Logger
 }

@@ -1,8 +1,6 @@
 module go.portalnesia.com/portal-cli
 
-go 1.23.0
-
-toolchain go1.23.5
+go 1.24.0
 
 require (
 	github.com/coreos/go-semver v0.3.1
@@ -27,10 +25,10 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.19 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
-	golang.org/x/mod v0.18.0 // indirect
-	golang.org/x/net v0.40.0 // indirect
-	golang.org/x/sync v0.14.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.25.0 // indirect
-	golang.org/x/tools v0.22.0 // indirect
+	golang.org/x/mod v0.32.0 // indirect
+	golang.org/x/net v0.49.0 // indirect
+	golang.org/x/sync v0.19.0 // indirect
+	golang.org/x/sys v0.40.0 // indirect
+	golang.org/x/text v0.33.0 // indirect
+	golang.org/x/tools v0.41.0 // indirect
 )

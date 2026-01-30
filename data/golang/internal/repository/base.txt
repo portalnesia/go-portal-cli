@@ -9,8 +9,9 @@ package repository
 
 import (
 	"context"
-	"gorm.io/gorm"
 	iface "APP_NAME/internal/interface"
+
+	"github.com/uptrace/bun"
 )
 
 type BaseRepository interface {
@@ -18,17 +19,17 @@ type BaseRepository interface {
 }
 
 type base struct {
-	db      *gorm.DB
-	log     iface.Logger
-	env     iface.Env
+	db      bun.IDB
+  log     iface.Logger
+  env     iface.Env
 }
 
 type dbValue struct{}
 
 func (r base) StartTransaction(c iface.Context, fc func() error) (err error) {
-	err = r.db.Transaction(func(tx *gorm.DB) error {
+	err = r.db.RunInTx(c.Context(), nil, func(ctx context.Context, tx bun.Tx) error {
 		// save transaction to context
-		ctx := context.WithValue(c.DBContext(), dbValue{}, tx)
+		ctx = context.WithValue(ctx, dbValue{}, tx)
 		c.DBContext(ctx)
 		errTx := fc()
 		if errTx != nil {
@@ -40,13 +41,17 @@ func (r base) StartTransaction(c iface.Context, fc func() error) (err error) {
 	return err
 }
 
-func (r base) getDatabase(ctx iface.Context, opts ...Options) *gorm.DB {
-	var getDB = func() *gorm.DB {
+func (r base) DB() bun.IDB {
+	return r.db
+}
+
+func (r base) getDatabase(ctx iface.Context) bun.IDB {
+	var getDB = func() bun.IDB {
 		dbAny := ctx.DBContext().Value(dbValue{})
 		if dbAny != nil {
-			dbGorm, ok := dbAny.(*gorm.DB)
+			dbbun, ok := dbAny.(bun.IDB)
 			if ok {
-				return dbGorm
+				return dbbun
 			}
 		}
 
@@ -54,8 +59,10 @@ func (r base) getDatabase(ctx iface.Context, opts ...Options) *gorm.DB {
 	}
 
 	db := getDB()
-	for _, opt := range opts {
-		db = db.Scopes(opt)
-	}
+
 	return db
+}
+
+func (r base) GetRedisKeyf(key string, args ...interface{}) string {
+	return r.redis.GetRedisKeyf("db_cached:"+key, args...)
 }

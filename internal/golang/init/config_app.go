@@ -9,12 +9,13 @@ package ginit
 
 import (
 	"fmt"
-	"github.com/fatih/color"
-	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
-	"go.portalnesia.com/portal-cli/pkg/helper"
 	"go/ast"
 	"go/token"
 	"sync"
+
+	"github.com/fatih/color"
+	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
+	"go.portalnesia.com/portal-cli/pkg/helper"
 )
 
 func (c *initType) initConfigApp(wg *sync.WaitGroup, res chan<- config2.Builder) {
@@ -26,8 +27,7 @@ func (c *initType) initConfigApp(wg *sync.WaitGroup, res chan<- config2.Builder)
 		`"github.com/rs/zerolog"`,
 		`"github.com/spf13/viper"`,
 		`"github.com/subosito/gotenv"`,
-		`pncrypto "go.portalnesia.com/crypto"`,
-		`"gorm.io/gorm"`,
+		`"github.com/uptrace/bun"`,
 		`"os"`,
 		fmt.Sprintf(`"%s/internal/repository"`, c.cfg.Module),
 		fmt.Sprintf(`iface "%s/internal/interface"`, c.cfg.Module),
@@ -88,7 +88,7 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 							Dir: ast.SEND | ast.RECV,
 							Value: &ast.StarExpr{
 								X: &ast.SelectorExpr{
-									X:   ast.NewIdent("gorm"),
+									X:   ast.NewIdent("bun"),
 									Sel: ast.NewIdent("DB"),
 								},
 							},
@@ -543,45 +543,6 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 		},
 	}, helper.BodyListNewLines())
 
-	// CRYPTO
-	body.List = append(body.List,
-		// // Init crypto
-		&ast.ExprStmt{
-			X: &ast.BasicLit{
-				Kind:  token.STRING,
-				Value: `// Init crypto`,
-			}, // dummy expression, tidak valid
-		},
-		// crypto := pncrypto.New(viper.GetString("secret.crypto"))
-		&ast.AssignStmt{
-			Lhs: []ast.Expr{ast.NewIdent("crypto")},
-			Tok: token.DEFINE,
-			Rhs: []ast.Expr{
-				&ast.CallExpr{
-					Fun: &ast.SelectorExpr{
-						X:   ast.NewIdent("pncrypto"),
-						Sel: ast.NewIdent("New"),
-					},
-					Args: []ast.Expr{
-						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent("viper"),
-								Sel: ast.NewIdent("GetString"),
-							},
-							Args: []ast.Expr{
-								&ast.BasicLit{
-									Kind:  token.STRING,
-									Value: `"secret.crypto"`,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		helper.BodyListNewLines(),
-	)
-
 	// DATABASE
 	body.List = append(body.List,
 		// // Init database
@@ -856,14 +817,6 @@ func (c *initType) appInitNew(decls []ast.Decl) []ast.Decl {
 								Sel: &ast.Ident{
 									Name: "Embed",
 								},
-							},
-						},
-						&ast.KeyValueExpr{
-							Key: &ast.Ident{
-								Name: "crypto",
-							},
-							Value: &ast.Ident{
-								Name: "crypto",
 							},
 						},
 						&ast.KeyValueExpr{
@@ -1186,73 +1139,53 @@ func (c *initType) appInitClose(decls []ast.Decl) []ast.Decl {
 
 	// DB
 	bodyList.List = append(bodyList.List, &ast.IfStmt{
+		// if a.db != nil
 		Cond: &ast.BinaryExpr{
-			X: &ast.SelectorExpr{
-				X:   ast.NewIdent("a"),
-				Sel: ast.NewIdent("db"),
-			},
+			X:  &ast.SelectorExpr{X: ast.NewIdent("a"), Sel: ast.NewIdent("db")},
 			Op: token.NEQ,
 			Y:  ast.NewIdent("nil"),
 		},
 		Body: &ast.BlockStmt{
 			List: []ast.Stmt{
-				// a.Log.Info("system").Msg("Closing postgresql...")
+				// a.Log().Info("system").Msg("Closing database...")
 				&ast.ExprStmt{
 					X: &ast.CallExpr{
 						Fun: &ast.SelectorExpr{
 							X: &ast.CallExpr{
 								Fun: &ast.SelectorExpr{
-									X: &ast.SelectorExpr{
-										X:   ast.NewIdent("a"),
-										Sel: ast.NewIdent("log"),
+									X: &ast.CallExpr{
+										Fun: &ast.SelectorExpr{
+											X: ast.NewIdent("a"), Sel: ast.NewIdent("Log"),
+										},
 									},
 									Sel: ast.NewIdent("Info"),
 								},
-								Args: []ast.Expr{
-									&ast.BasicLit{
-										Kind:  token.STRING,
-										Value: `"system"`,
-									},
-								},
+								Args: []ast.Expr{helper.StrLit("system")},
 							},
 							Sel: ast.NewIdent("Msg"),
 						},
-						Args: []ast.Expr{
-							&ast.BasicLit{
-								Kind:  token.STRING,
-								Value: `"Closing database..."`,
-							},
+						Args: []ast.Expr{helper.StrLit("Closing database...")},
+					},
+				},
+
+				// sqlDB = a.db.DB
+				&ast.AssignStmt{
+					Lhs: []ast.Expr{ast.NewIdent("sqlDB")},
+					Tok: token.ASSIGN,
+					Rhs: []ast.Expr{
+						&ast.SelectorExpr{
+							X:   &ast.SelectorExpr{X: ast.NewIdent("a"), Sel: ast.NewIdent("db")},
+							Sel: ast.NewIdent("DB"),
 						},
 					},
 				},
-				// if sqlDB, _ := a.DB.DB(); sqlDB != nil {
+
+				// if err == nil
 				&ast.IfStmt{
-					Init: &ast.AssignStmt{
-						Lhs: []ast.Expr{
-							ast.NewIdent("sqlDB"),
-							ast.NewIdent("_"),
-						},
-						Tok: token.DEFINE,
-						Rhs: []ast.Expr{
-							&ast.CallExpr{
-								Fun: &ast.SelectorExpr{
-									X: &ast.SelectorExpr{
-										X:   ast.NewIdent("a"),
-										Sel: ast.NewIdent("db"),
-									},
-									Sel: ast.NewIdent("DB"),
-								},
-							},
-						},
-					},
-					Cond: &ast.BinaryExpr{
-						X:  ast.NewIdent("sqlDB"),
-						Op: token.NEQ,
-						Y:  ast.NewIdent("nil"),
-					},
+					Cond: &ast.BinaryExpr{X: ast.NewIdent("err"), Op: token.EQL, Y: ast.NewIdent("nil")},
 					Body: &ast.BlockStmt{
 						List: []ast.Stmt{
-							// if err = sqlDB.Close(); err != nil {
+							// if err = sqlDB.Close(); err != nil
 							&ast.IfStmt{
 								Init: &ast.AssignStmt{
 									Lhs: []ast.Expr{ast.NewIdent("err")},
@@ -1260,47 +1193,33 @@ func (c *initType) appInitClose(decls []ast.Decl) []ast.Decl {
 									Rhs: []ast.Expr{
 										&ast.CallExpr{
 											Fun: &ast.SelectorExpr{
-												X:   ast.NewIdent("sqlDB"),
-												Sel: ast.NewIdent("Close"),
+												X: ast.NewIdent("sqlDB"), Sel: ast.NewIdent("Close"),
 											},
 										},
 									},
 								},
-								Cond: &ast.BinaryExpr{
-									X:  ast.NewIdent("err"),
-									Op: token.NEQ,
-									Y:  ast.NewIdent("nil"),
-								},
+								Cond: &ast.BinaryExpr{X: ast.NewIdent("err"), Op: token.NEQ, Y: ast.NewIdent("nil")},
 								Body: &ast.BlockStmt{
 									List: []ast.Stmt{
-										// a.Log.Error(err, "postgre").Msg("Error closing postgre connection")
+										// a.Log().Error(err, "db").Msg("Error closing database connection")
 										&ast.ExprStmt{
 											X: &ast.CallExpr{
 												Fun: &ast.SelectorExpr{
 													X: &ast.CallExpr{
 														Fun: &ast.SelectorExpr{
-															X: &ast.SelectorExpr{
-																X:   ast.NewIdent("a"),
-																Sel: ast.NewIdent("log"),
+															X: &ast.CallExpr{
+																Fun: &ast.SelectorExpr{
+																	X: ast.NewIdent("a"), Sel: ast.NewIdent("Log"),
+																},
+																Args: []ast.Expr{},
 															},
 															Sel: ast.NewIdent("Error"),
 														},
-														Args: []ast.Expr{
-															ast.NewIdent("err"),
-															&ast.BasicLit{
-																Kind:  token.STRING,
-																Value: `"system"`,
-															},
-														},
+														Args: []ast.Expr{ast.NewIdent("err"), helper.StrLit("db")},
 													},
 													Sel: ast.NewIdent("Msg"),
 												},
-												Args: []ast.Expr{
-													&ast.BasicLit{
-														Kind:  token.STRING,
-														Value: `"Error closing database connection"`,
-													},
-												},
+												Args: []ast.Expr{helper.StrLit("Error closing db connection")},
 											},
 										},
 									},
@@ -1480,21 +1399,6 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 			},
 		},
 		{
-			Names: []*ast.Ident{ast.NewIdent("Crypto")},
-			Type: &ast.FuncType{
-				Params: &ast.FieldList{},
-				Results: &ast.FieldList{
-					List: []*ast.Field{
-						{
-							Type: &ast.SelectorExpr{
-								X: ast.NewIdent("pncrypto"), Sel: ast.NewIdent("Crypto"),
-							},
-						},
-					},
-				},
-			},
-		},
-		{
 			Names: []*ast.Ident{ast.NewIdent("Log")},
 			Type: &ast.FuncType{
 				Params: &ast.FieldList{},
@@ -1518,7 +1422,7 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 						{
 							Type: &ast.StarExpr{
 								X: &ast.SelectorExpr{
-									X: ast.NewIdent("gorm"), Sel: ast.NewIdent("DB"),
+									X: ast.NewIdent("bun"), Sel: ast.NewIdent("DB"),
 								},
 							},
 						},
@@ -1632,13 +1536,6 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 			},
 		},
 		{
-			Names: []*ast.Ident{ast.NewIdent("crypto")},
-			Type: &ast.SelectorExpr{
-				X:   ast.NewIdent("pncrypto"),
-				Sel: ast.NewIdent("Crypto"),
-			},
-		},
-		{
 			Names: []*ast.Ident{ast.NewIdent("log")},
 			Type:  &ast.StarExpr{X: ast.NewIdent("Logger")},
 		},
@@ -1646,7 +1543,7 @@ func (c *initType) appInitType(decls []ast.Decl) []ast.Decl {
 			Names: []*ast.Ident{ast.NewIdent("db")},
 			Type: &ast.StarExpr{
 				X: &ast.SelectorExpr{
-					X:   ast.NewIdent("gorm"),
+					X:   ast.NewIdent("bun"),
 					Sel: ast.NewIdent("DB"),
 				},
 			},
