@@ -13,8 +13,8 @@ import (
 )
 
 type ModelPagination interface {
-	GetAvailableOrder() [][]string
-	GetDefaultOrder() []string // [sort,order]
+	GetAvailableOrder() []string
+	GetDefaultOrder() [2]string // [sort,order]
 }
 
 type PaginationRepository[Model ModelPagination, Filter iface.Request] interface {

@@ -71,12 +71,11 @@ func (s *addRepository) addRepositoryModel(wg *sync.WaitGroup, res chan<- config
 		},
 		Name: dst.NewIdent("GetDefaultOrder"),
 		Type: &dst.FuncType{
-			Params: &dst.FieldList{},
 			Results: &dst.FieldList{
 				List: []*dst.Field{
 					{
 						Type: &dst.ArrayType{
-							Elt: dst.NewIdent("string"),
+							Len: &dst.BasicLit{Kind: token.INT, Value: "2"}, Elt: dst.NewIdent("string"),
 						},
 					},
 				},
@@ -88,7 +87,7 @@ func (s *addRepository) addRepositoryModel(wg *sync.WaitGroup, res chan<- config
 					Results: []dst.Expr{
 						&dst.CompositeLit{
 							Type: &dst.ArrayType{
-								Elt: dst.NewIdent("string"),
+								Len: &dst.BasicLit{Kind: token.INT, Value: "2"}, Elt: dst.NewIdent("string"),
 							},
 							Elts: []dst.Expr{
 								&dst.BasicLit{Kind: token.STRING, Value: `"created_at"`},
@@ -112,17 +111,8 @@ func (s *addRepository) addRepositoryModel(wg *sync.WaitGroup, res chan<- config
 		},
 		Name: dst.NewIdent("GetAvailableOrder"),
 		Type: &dst.FuncType{
-			Params: &dst.FieldList{},
 			Results: &dst.FieldList{
-				List: []*dst.Field{
-					{
-						Type: &dst.ArrayType{
-							Elt: &dst.ArrayType{
-								Elt: dst.NewIdent("string"),
-							},
-						},
-					},
-				},
+				List: []*dst.Field{{Type: &dst.ArrayType{Elt: dst.NewIdent("string")}}},
 			},
 		},
 		Body: &dst.BlockStmt{
@@ -130,18 +120,9 @@ func (s *addRepository) addRepositoryModel(wg *sync.WaitGroup, res chan<- config
 				&dst.ReturnStmt{
 					Results: []dst.Expr{
 						&dst.CompositeLit{
-							Type: &dst.ArrayType{
-								Elt: &dst.ArrayType{
-									Elt: dst.NewIdent("string"),
-								},
-							},
+							Type: &dst.ArrayType{Elt: dst.NewIdent("string")},
 							Elts: []dst.Expr{
-								&dst.CompositeLit{
-									Elts: []dst.Expr{
-										&dst.BasicLit{Kind: token.STRING, Value: `"created_at"`},
-										&dst.BasicLit{Kind: token.STRING, Value: `"desc"`},
-									},
-								},
+								&dst.BasicLit{Kind: token.STRING, Value: `"created_at"`},
 							},
 						},
 					},

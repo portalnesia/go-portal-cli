@@ -139,69 +139,87 @@ func (d *Request) Init(ctx *context.Context) {
 
 // ListHelper
 //
-// orderValue: array of columns that can be ordered
-// defaultValue: map[order]sort. example: {"user_login":"desc"}
-func (d *Request) ListHelper(orderValue []string, defaultValue [][]string) func(db *bun.SelectQuery) *bun.SelectQuery {
-	query := make([]string, 0)
-	mapOrder := make([][]string, 0) // column => sort
-	if d.OrderParsed != nil {
-		for _, order := range d.OrderParsed {
-			k, v := order[0], order[1]
-			if lo.Contains(orderValue, k) {
-				query = append(query, fmt.Sprintf("?TableAlias.%s %s", k, v))
-			}
-		}
-		mapOrder = d.OrderParsed
-	}
-	if len(query) == 0 {
-		for _, order := range defaultValue {
-			k, v := order[0], order[1]
-			query = append(query, fmt.Sprintf("?TableAlias.%s %s", k, v))
-		}
-		mapOrder = defaultValue
-		d.OrderParsed = defaultValue
-	}
-
+// defaultValue: [2]string. example: ["user_login","desc"]
+// availableOrderValue: [][]string. array of columns that can be ordered
+func (d *Request) ListHelper(defaultValue [2]string, availableOrderValue []string) func(db *bun.SelectQuery) *bun.SelectQuery {
 	return func(db *bun.SelectQuery) *bun.SelectQuery {
-		db = db.Order(strings.Join(query, ", "))
+		query := make([]string, 0)
+    mapOrder := make([][]string, 0) // column => sort
+    if d.OrderParsed != nil {
+      for _, order := range d.OrderParsed {
+        k, v := order[0], order[1]
+        if lo.Contains(availableOrderValue, k) {
+          query = append(query, fmt.Sprintf("?TableAlias.%s %s", k, v))
+        }
+      }
+
+      mapOrder = d.OrderParsed
+    }
+    if len(query) == 0 {
+      k, v := defaultValue[0], defaultValue[1]
+      query = append(query, fmt.Sprintf("?TableAlias.%s %s", k, v))
+      mapOrder = [][]string{{defaultValue[0], defaultValue[1]}}
+      d.OrderParsed = mapOrder
+    }
+
+    db = db.OrderExpr(strings.Join(query, ", "))
 
 		if d.Page > 0 {
-			db = db.Offset(d.Start)
-		} else if d.Cursor != nil {
-			db = db.Offset(0)
-			where := make([]string, 0)
-			value := make([]any, 0)
+      db = db.Offset(d.Start)
+    } else if d.Cursor != nil {
+      db = db.Offset(0)
 
-			for i := range mapOrder {
-				var parts []string
-				var args []interface{}
+      type WhereValue struct {
+        Where string
+        Value []any
+      }
 
-				// untuk j < i: col_j = v_j
-				for j := 0; j < i; j++ {
-					colJ := mapOrder[j][0]
-					parts = append(parts, fmt.Sprintf("%s = ?", colJ))
-					args = append(args, d.Cursor[colJ])
-				}
+      whereValue := make([]WhereValue, 0)
 
-				// untuk i: col_i >/< v_i
-				colI := mapOrder[i][0]
-				dir := strings.ToLower(mapOrder[i][1])
-				op := "<"
-				if dir == "asc" {
-					op = ">"
-				}
-				parts = append(parts, fmt.Sprintf("%s %s ?", colI, op))
-				args = append(args, d.Cursor[colI])
+      for i := range mapOrder {
+        var parts []string
+        var args []interface{}
 
-				clause := strings.Join(parts, " AND ")
-				where = append(where, clause)
-				value = append(value, args...)
-			}
+        // untuk j < i: col_j = v_j
+        for j := 0; j < i; j++ {
+          colJ := mapOrder[j][0]
+          if cursor, ok := d.Cursor[colJ]; ok && cursor != nil {
+            parts = append(parts, fmt.Sprintf("?TableAlias.%s = ?", colJ))
+            args = append(args, d.Cursor[colJ])
+          }
+        }
 
-			if len(where) > 0 {
-				db = db.Where(strings.Join(where, " OR "), value...)
-			}
-		}
+        // untuk i: col_i >/< v_i
+        colI := mapOrder[i][0]
+        dir := strings.ToLower(mapOrder[i][1])
+        op := "<"
+        if dir == "asc" {
+          op = ">"
+        }
+
+        if cursor, ok := d.Cursor[colI]; ok && cursor != nil {
+          parts = append(parts, fmt.Sprintf("?TableAlias.%s %s ?", colI, op))
+          args = append(args, cursor)
+        }
+
+        clause := strings.Join(parts, " AND ")
+        if len(args) > 0 && clause != "" {
+          whereValue = append(whereValue, WhereValue{
+            Where: clause,
+            Value: args,
+          })
+        }
+      }
+
+      if len(whereValue) > 0 {
+        db = db.WhereGroup(" AND ", func(query *bun.SelectQuery) *bun.SelectQuery {
+          for _, wv := range whereValue {
+            query = query.WhereOr(wv.Where, wv.Value...)
+          }
+          return query
+        })
+      }
+    }
 
 		return db.Limit(d.PageSize)
 	}
