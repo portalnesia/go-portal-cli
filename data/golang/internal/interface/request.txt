@@ -7,12 +7,21 @@
 
 package iface
 
-import "github.com/uptrace/bun"
+import (
+	"github.com/uptrace/bun"
+)
 
 type Request interface {
+	// ListHelperOld(orderValue []string, defaultValue [][]string, table string) func(db *gorm.DB) *gorm.DB
+
 	SetTotal(t int64)
-	ListHelper(orderValue []string, defaultValue [][]string) func(db *bun.SelectQuery) *bun.SelectQuery
+	ListHelper(defaultValue [2]string, orderValue []string, fallbackPKColumn string) func(db *bun.SelectQuery) *bun.SelectQuery
 	GetPage() int
 	GetOrder() [][]string
-	SetCursorResponse(d string)
+	GetNextCursor() *MapQuery
+	GetPrevCursor() *MapQuery
+	SetCursorResponse(prev, next string)
+	GetPageSize() int
+	IsDataOnly() bool
+	IsTotalOnly() bool
 }

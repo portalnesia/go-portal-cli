@@ -27,7 +27,17 @@ type base struct {
 type dbValue struct{}
 
 func (r base) StartTransaction(c iface.Context, fc func() error) (err error) {
-	err = r.db.RunInTx(c.Context(), nil, func(ctx context.Context, tx bun.Tx) error {
+	dbAny := c.DBContext().Value(dbValue{})
+	if dbAny != nil {
+		_, ok := dbAny.(bun.IDB)
+		if ok {
+			return fc()
+		}
+	}
+
+	err = r.db.RunInTx(c.Context(), &sql.TxOptions{
+		Isolation: sql.LevelReadCommitted,
+	}, func(ctx context.Context, tx bun.Tx) error {
 		// save transaction to context
 		ctx = context.WithValue(ctx, dbValue{}, tx)
 		c.DBContext(ctx)

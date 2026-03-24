@@ -9,7 +9,10 @@ package repository
 
 import (
 	iface "APP_NAME/internal/interface"
-	"APP_NAME/internal/dto"
+	"APP_NAME/pkg/cryptolib"
+	"reflect"
+
+	"github.com/uptrace/bun"
 )
 
 type ModelPagination interface {
@@ -17,55 +20,142 @@ type ModelPagination interface {
 	GetDefaultOrder() [2]string // [sort,order]
 }
 
-type PaginationRepository[Model ModelPagination, Filter iface.Request] interface {
-	Paginate(ctx iface.Context, query Filter, withCount bool, opts ...SelectOptions) (resp []Model, err error)
-}
-
 type paginationRepository[Model ModelPagination, Filter iface.Request] struct {
-	base
+	*base
 }
 
-func newPaginationRepository[Model ModelPagination, Filter iface.Request](bs base) PaginationRepository[Model, Filter] {
+func newPaginationRepository[Model ModelPagination, Filter iface.Request](bs *base) *paginationRepository[Model, Filter] {
 	return &paginationRepository[Model, Filter]{
 		base: bs,
 	}
 }
 
+// extractValuesByColumns mengambil field value berdasarkan kolom yang didefinisikan di map[column]sort
+func extractValuesByColumns(db *bun.DB, s interface{}, sorting [][]string, fallbackPKColumn string) (string, map[string]any, error) {
+	table := db.Table(reflect.TypeOf(s))
+	value := reflect.ValueOf(s)
+	if value.Kind() == reflect.Ptr {
+		value = value.Elem()
+	}
+
+	result := make(map[string]interface{})
+	for _, pair := range sorting {
+		if field, ok := table.FieldMap[pair[0]]; ok && field != nil {
+			reflectValue := field.Value(value)
+			result[pair[0]] = reflectValue.Interface()
+		}
+	}
+
+	if field, ok := table.FieldMap[fallbackPKColumn]; ok && field != nil {
+		if _, exists := result[fallbackPKColumn]; !exists {
+			reflectValue := field.Value(value)
+			result[fallbackPKColumn] = reflectValue.Interface()
+		}
+	}
+
+	enc, err := cryptolib.SignCursor(result)
+	return enc, result, err
+}
+
 // Paginate implements PaginationRepository
-func (r paginationRepository[Model, Filter]) Paginate(ctx iface.Context, query Filter, noCount bool, opts ...SelectOptions) (resp []Model, err error) {
+func (r *paginationRepository[Model, Filter]) paginate(ctx iface.Context, query Filter, fn DBOpt, opts SelectOptions, fallbackPKColumn ...string) (resp []Model, err error) {
 	var tmp Model
 	db := r.getDatabase(ctx)
+	fallbackPk := "id"
+	if len(fallbackPKColumn) > 0 {
+		fallbackPk = fallbackPKColumn[0]
+	}
 
-	dbSelect := db.NewSelect().Model(&tmp)
+	resp = make([]Model, 0)
+	dbSelect := db.NewSelect().Model(&resp)
 
-	if !noCount {
+	if query.IsTotalOnly() {
 		dbCount := db.NewSelect().Model(&tmp)
-		for _, opt := range opts {
-			dbCount = opt(dbCount)
-		}
+		dbCount = opts(dbCount)
 
 		total, _ := dbCount.Count(ctx.DBContext())
 		query.SetTotal(int64(total))
 	}
 
-	for _, opt := range opts {
-		dbSelect = opt(dbSelect)
-	}
-	dbSelect = query.ListHelper(tmp.GetDefaultOrder(), tmp.GetAvailableOrder())(dbSelect)
-	err = dbSelect.Scan(ctx.DBContext(), &resp)
-	if err != nil {
-		return nil, err
-	}
+	if !query.IsTotalOnly() {
+		if len(fn.Columns) > 0 {
+			dbSelect = dbSelect.Column(fn.Columns...)
+		}
+		if len(fn.ExcludeColumns) > 0 {
+			dbSelect = dbSelect.ExcludeColumn(fn.ExcludeColumns...)
+		}
+		if len(fn.Relation) > 0 {
+			for _, relation := range fn.Relation {
+				dbSelect = dbSelect.Relation(relation)
+			}
+		}
 
-	if query.GetPage() == 0 {
-		lenData := len(resp)
-		if lenData > 0 && lenData == query.GetPageSize() {
-			cursorResponse, _ := dto.ExtractValuesByColumns(&resp[lenData-1], query.GetOrder())
-			query.SetCursorResponse(cursorResponse)
+		dbSelect = opts(dbSelect)
+		dbSelect = query.ListHelper(tmp.GetDefaultOrder(), tmp.GetAvailableOrder(), fallbackPk)(dbSelect)
+		//fmt.Println(dbSelect.String())
+		err = dbSelect.Scan(ctx.DBContext())
+		if err != nil {
+			return nil, err
+		}
+
+		if query.GetPage() == 0 {
+			// Untuk prev_cursor: ORDER di-flip + strict operator, hasil di-reverse agar urutan asli terjaga.
+			if query.GetPrevCursor() != nil {
+				// Reverse slice in-place
+				for i, j := 0, len(resp)-1; i < j; i, j = i+1, j-1 {
+					resp[i], resp[j] = resp[j], resp[i]
+				}
+			}
+
+			lenData := len(resp)
+			if lenData > 0 {
+				pageSize := query.GetPageSize()
+
+				var prevCursor string
+				var nextCursor string
+				//var pC map[string]any
+				//var nC map[string]any
+
+				hasPrevCursor := query.GetPrevCursor() != nil
+				hasNextCursor := query.GetNextCursor() != nil
+
+				if hasPrevCursor {
+					// Navigasi mundur (prev_cursor).
+					// Sentinel (jika ada) ada di resp[0] setelah reverse.
+					// prev ada hanya jika sentinel hadir.
+					// next selalu ada, diambil dari item terakhir halaman ini.
+
+					if lenData > pageSize {
+						// Ada sentinel di resp[0] → masih ada halaman sebelumnya lagi.
+						resp = resp[1:]
+						prevCursor, _, _ = extractValuesByColumns(r.db, &resp[0], query.GetOrder(), fallbackPk)
+					}
+					// next = item terakhir halaman ini (bukan sentinel)
+					nextCursor, _, _ = extractValuesByColumns(r.db, &resp[len(resp)-1], query.GetOrder(), fallbackPk)
+
+				} else {
+					// Navigasi maju (next_cursor) atau first page.
+
+					if hasNextCursor {
+						// Bukan first page → selalu ada prev, dari item pertama halaman ini.
+						prevCursor, _, _ = extractValuesByColumns(r.db, &resp[0], query.GetOrder(), fallbackPk)
+					}
+
+					if lenData > pageSize {
+						// Ada sentinel → masih ada halaman berikutnya.
+						// Trim sentinel, next = item terakhir halaman ini (resp[pageSize-1]).
+						resp = resp[:pageSize]
+						nextCursor, _, _ = extractValuesByColumns(r.db, &resp[pageSize-1], query.GetOrder(), fallbackPk)
+					}
+				}
+
+				//fmt.Println("prevCursor:", pC, "nextCursor:", nC)
+				query.SetCursorResponse(prevCursor, nextCursor)
+			}
 		}
 	}
 
-	if len(resp) == 0 {
+	if resp == nil {
 		resp = make([]Model, 0)
 	}
 

@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"go/parser"
 	"go/token"
-	"strings"
 	"sync"
 
 	"github.com/dave/dst"
@@ -19,13 +18,12 @@ import (
 	"github.com/fatih/color"
 	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
 	"go.portalnesia.com/portal-cli/pkg/helper"
-	"go.portalnesia.com/utils"
 )
 
 func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 
-	serviceName := strings.ReplaceAll(utils.Ucwords(strings.ReplaceAll(s.cfg.Name, "_", " ")), " ", "")
+	serviceName := s.cfg.Name
 	lowerName := helper.FirstToLower(serviceName)
 	structName := fmt.Sprintf("%sRepository", lowerName)
 
@@ -73,12 +71,14 @@ func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- conf
 					Fields: &dst.FieldList{
 						List: []*dst.Field{
 							{
-								Type: &dst.IndexListExpr{
-									X: dst.NewIdent("crudRepository"),
-									Indices: []dst.Expr{
-										&dst.SelectorExpr{
-											X:   dst.NewIdent("model"),
-											Sel: dst.NewIdent(serviceName),
+								Type: &dst.StarExpr{
+									X: &dst.IndexListExpr{
+										X: dst.NewIdent("crudRepository"),
+										Indices: []dst.Expr{
+											&dst.SelectorExpr{
+												X:   dst.NewIdent("model"),
+												Sel: dst.NewIdent(serviceName),
+											},
 										},
 									},
 								},
@@ -98,7 +98,10 @@ func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- conf
 				List: []*dst.Field{
 					{
 						Names: []*dst.Ident{dst.NewIdent("bs")},
-						Type:  dst.NewIdent("base"),
+						// Mengubah 'base' menjadi '*base'
+						Type: &dst.StarExpr{
+							X: dst.NewIdent("base"),
+						},
 					},
 				},
 			},
@@ -114,21 +117,50 @@ func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- conf
 			List: []dst.Stmt{
 				&dst.ReturnStmt{
 					Results: []dst.Expr{
-						&dst.CompositeLit{
-							Type: dst.NewIdent(structName),
-							Elts: []dst.Expr{
-								&dst.CompositeLit{
-									Type: &dst.IndexListExpr{
-										X: dst.NewIdent("crudRepository"),
-										Indices: []dst.Expr{
-											&dst.SelectorExpr{
-												X:   dst.NewIdent("model"),
-												Sel: dst.NewIdent(serviceName),
+						// Menambahkan UnaryExpr (&) agar mengembalikan pointer &structName{...}
+						&dst.UnaryExpr{
+							Op: token.AND,
+							X: &dst.CompositeLit{
+								Type: dst.NewIdent(structName),
+								Elts: []dst.Expr{
+									// Elemen 1: &crudRepository[model.Files]{bs}
+									&dst.UnaryExpr{
+										Op: token.AND,
+										X: &dst.CompositeLit{
+											Type: &dst.IndexListExpr{
+												X: dst.NewIdent("crudRepository"),
+												Indices: []dst.Expr{
+													&dst.SelectorExpr{
+														X:   dst.NewIdent("model"),
+														Sel: dst.NewIdent(serviceName),
+													},
+												},
+											},
+											Elts: []dst.Expr{
+												dst.NewIdent("bs"),
 											},
 										},
 									},
-									Elts: []dst.Expr{
-										dst.NewIdent("bs"),
+									// Elemen 2: newPaginationRepository[model.Files, *request.Request](bs)
+									&dst.CallExpr{
+										Fun: &dst.IndexListExpr{
+											X: dst.NewIdent("newPaginationRepository"),
+											Indices: []dst.Expr{
+												&dst.SelectorExpr{
+													X:   dst.NewIdent("model"),
+													Sel: dst.NewIdent(serviceName),
+												},
+												&dst.StarExpr{
+													X: &dst.SelectorExpr{
+														X:   dst.NewIdent("request"),
+														Sel: dst.NewIdent("Request"),
+													},
+												},
+											},
+										},
+										Args: []dst.Expr{
+											dst.NewIdent("bs"),
+										},
 									},
 								},
 							},
@@ -152,14 +184,14 @@ func (s *addRepository) addServiceRepository(wg *sync.WaitGroup, res chan<- conf
 
 	res <- config2.Builder{
 		DstFile:  file,
-		Pathname: fmt.Sprintf("internal/repository/%s_repository.go", strings.ToLower(s.cfg.Name)),
+		Pathname: fmt.Sprintf("internal/repository/%s_repository.go", s.cfg.PathName),
 	}
 }
 
 func (s *addRepository) addToRepository(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 
-	serviceName := strings.ReplaceAll(utils.Ucwords(strings.ReplaceAll(s.cfg.Name, "_", " ")), " ", "")
+	serviceName := s.cfg.Name
 
 	// Parse file routes
 	resp := config2.Builder{

@@ -17,11 +17,11 @@ type UserRepository interface {
 }
 
 type userRepository struct {
-	crudRepository[model.User, string, *dto.Request]
+	*crudRepository[model.User, string, *dto.Request]
 }
 
 func newUserRepository(bs base) UserRepository {
-	return userRepository{
-		crudRepository[model.User, string, *dto.Request]{bs},
+	return &userRepository{
+		&crudRepository[model.User, string, *dto.Request]{bs},
 	}
 }

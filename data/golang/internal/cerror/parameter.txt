@@ -8,31 +8,47 @@
 package cerror
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
-	"github.com/go-playground/validator/v10"
 	"strings"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/gofiber/fiber/v2"
 )
 
 const (
-	ErrorBadParameter     = 700
-	ErrorInvalidParameter = 710
-	NameBadParameter      = "bad_parameter"
+	ErrorBadParameter        = 700
+	ErrorInvalidParameter    = 710
+	ErrorUnprocessableEntity = 720
+	NameBadParameter         = "bad_parameter"
+	NameUnprocessableEntity  = "unprocessible_entity"
 )
+
+func InvalidRequest(err error) *Error {
+	return NewError(fiber.StatusBadRequest, ErrorInvalidParameter, NameBadParameter, "Invalid request", err)
+}
 
 func BadParameter(whatMissing string) *Error {
 	msg := fmt.Sprintf("Missing `%s` parameter", whatMissing)
 
-	return NewError(400, ErrorBadParameter, NameBadParameter, msg)
+	return NewError(fiber.StatusBadRequest, ErrorBadParameter, NameBadParameter, msg)
+}
+
+func UnprocessableEntity(msg string) *Error {
+	return NewError(fiber.StatusUnprocessableEntity, ErrorUnprocessableEntity, NameUnprocessableEntity, msg)
 }
 
 func InvalidParameter(whatInvalid string, other ...any) *Error {
 	msg := fmt.Sprintf("Invalid `%s` parameter", whatInvalid)
 
+	httpCode := fiber.StatusBadRequest
 	var err error
 	if len(other) > 0 {
 		for _, a := range other {
 			switch v := a.(type) {
+			case int:
+				httpCode = v
 			case string:
 				if v != "" {
 					msg = msg + ". " + v
@@ -43,23 +59,107 @@ func InvalidParameter(whatInvalid string, other ...any) *Error {
 		}
 	}
 
-	return NewError(400, ErrorInvalidParameter, NameBadParameter, msg, err)
+	return NewError(httpCode, ErrorInvalidParameter, NameBadParameter, msg, err)
+}
+
+type FieldError struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
+
+type FieldErrors []FieldError
+
+func (e FieldErrors) Error() string {
+	buff := bytes.NewBufferString("")
+	for i := 0; i < len(e); i++ {
+		buff.WriteString(fmt.Sprintf("%s: %s", e[i].Field, e[i].Message))
+		buff.WriteString("\n")
+	}
+
+	return strings.TrimSpace(buff.String())
+}
+
+func (e *FieldErrors) Add(field string, message string) {
+	if e != nil {
+		*e = append(*e, FieldError{
+			Field:   field,
+			Message: message,
+		})
+	}
+}
+
+func (e *FieldErrors) Exist() bool {
+	if e == nil {
+		return false
+	}
+	return len(*e) > 0
+}
+
+func NewErrorFields(fields ...[2]string) *FieldErrors {
+	errFields := make(FieldErrors, len(fields))
+	for i, field := range fields {
+		errFields[i] = FieldError{
+			Field:   field[0],
+			Message: field[1],
+		}
+	}
+	return &errFields
 }
 
 func ValidateError(err error) *Error {
+	var (
+		fields          []FieldError
+		validationError validator.ValidationErrors
+		fieldError      *FieldErrors
+		errs            error
+		//reason          error
+	)
+
 	var invalidValidationError *validator.InvalidValidationError
+	if cerr, isCerror := IsError(err); isCerror {
+		return cerr
+	}
+
 	if errors.As(err, &invalidValidationError) {
 		return Server(err)
 	}
-	for _, er := range err.(validator.ValidationErrors) {
-		return NewError(400, ErrorInvalidParameter, "bad_parameter", msgForTag(er), er)
+
+	if errors.As(err, &fieldError) {
+		if !fieldError.Exist() {
+			return nil
+		}
+		fields = *fieldError
+	} else if errors.As(err, &validationError) {
+		for _, er := range validationError {
+			fields = append(fields, FieldError{
+				Field:   er.Field(),
+				Message: msgForTag(er),
+			})
+		}
+		//reason = validationError
+	} else {
+		errs = err
 	}
-	return NewError(400, ErrorInvalidParameter, "bad_parameter", "Invalid request", err)
+
+	resp := NewError(fiber.StatusBadRequest, ErrorInvalidParameter, "bad_parameter", "Invalid request", errs)
+
+	if fields != nil && len(fields) > 0 {
+		resp.Details = fields
+	}
+
+	/*if reason != nil {
+		resp.Reason = &Reason{
+			Error:  reason,
+			String: reason.Error(),
+		}
+	}*/
+
+	return resp
 }
 
 func msgForTag(fe validator.FieldError) string {
 	switch fe.Tag() {
-	case "required":
+	case "required", "required_unless", "required_if":
 		return fmt.Sprintf("Missing parameter `%s`", fe.Field())
 	case "email":
 		return "Invalid email"
@@ -69,6 +169,24 @@ func msgForTag(fe validator.FieldError) string {
 		return fmt.Sprintf("Parameter `%s` must have at least %s characters", fe.Field(), fe.Param())
 	case "max":
 		return fmt.Sprintf("Parameter `%s` must have a maximum of %s characters", fe.Field(), fe.Param())
+	case "datetime":
+		return fmt.Sprintf("Parameter `%s` must be a valid date with format %s", fe.Field(), fe.Param())
+	case "url":
+		return fmt.Sprintf("Parameter `%s` must be a valid URL", fe.Field())
+	case "alphanum":
+		return fmt.Sprintf("Parameter `%s` must contain only alphanumeric characters", fe.Field())
+	case "alphanumspace":
+		return fmt.Sprintf("Parameter `%s` must contain only alphanumeric characters and spaces", fe.Field())
+	case "alphanumdotspace":
+		return fmt.Sprintf("Parameter `%s` must contain only alphanumeric characters, dots, and spaces", fe.Field())
+	case "alphaspace":
+		return fmt.Sprintf("Parameter `%s` must contain only alphabetic characters and spaces", fe.Field())
+	case "uuid":
+		return fmt.Sprintf("Parameter `%s` must be a valid UUID", fe.Field())
+	case "ulid":
+		return fmt.Sprintf("Parameter `%s` must be a valid ULID", fe.Field())
+	case "username_regex":
+		return fmt.Sprintf("Parameter `%s` must start with a letter and can contain letters, numbers, underscores, and dots, with a length between 6 to 50 characters", fe.Field())
 	}
 	return fmt.Sprintf("Invalid `%s` parameter", fe.Field())
 }

@@ -9,22 +9,22 @@ package service
 
 import (
 	"fmt"
+	"go/parser"
+	"go/token"
+	"strings"
+	"sync"
+
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"github.com/fatih/color"
 	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
 	"go.portalnesia.com/portal-cli/pkg/helper"
-	"go.portalnesia.com/utils"
-	"go/parser"
-	"go/token"
-	"strings"
-	"sync"
 )
 
 func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 
-	serviceName := utils.Ucwords(s.cfg.Name)
+	serviceName := s.cfg.Name
 	ins := strings.ToLower(s.cfg.Name)[0:1]
 
 	_, _ = color.New(color.FgBlue).Printf("Generating handler\n")
@@ -891,7 +891,7 @@ func (s *addService) addServiceHandler(wg *sync.WaitGroup, res chan<- config2.Bu
 
 	res <- config2.Builder{
 		DstFile:  file,
-		Pathname: fmt.Sprintf("internal/rest/handler/%s_handler.go", s.cfg.Name),
+		Pathname: fmt.Sprintf("internal/rest/handler/%s_handler.go", s.cfg.PathName),
 	}
 }
 
@@ -900,7 +900,7 @@ func (s *addEndpoint) addEndpointHandler(wg *sync.WaitGroup, res chan<- config2.
 
 	_, _ = color.New(color.FgBlue).Printf("Generating handler\n")
 
-	serviceName := utils.Ucwords(s.cfg.ServiceName)
+	serviceName := s.cfg.ServiceName
 	ins := strings.ToLower(s.cfg.ServiceName)[0:1]
 
 	// Parse file routes
@@ -910,7 +910,7 @@ func (s *addEndpoint) addEndpointHandler(wg *sync.WaitGroup, res chan<- config2.
 	}()
 
 	fset := token.NewFileSet()
-	file, err := decorator.ParseFile(fset, s.app.Dir(fmt.Sprintf("internal/rest/handler/%s_handler.go", s.cfg.ServiceName)), nil, parser.AllErrors)
+	file, err := decorator.ParseFile(fset, s.app.Dir(fmt.Sprintf("internal/rest/handler/%s_handler.go", s.cfg.ServicePathName)), nil, parser.AllErrors)
 	if err != nil {
 		resp.Err = err
 		return
@@ -1057,6 +1057,6 @@ func (s *addEndpoint) addEndpointHandler(wg *sync.WaitGroup, res chan<- config2.
 
 	resp = config2.Builder{
 		DstFile:  file,
-		Pathname: fmt.Sprintf("internal/rest/handler/%s_handler.go", s.cfg.ServiceName),
+		Pathname: fmt.Sprintf("internal/rest/handler/%s_handler.go", s.cfg.ServicePathName),
 	}
 }

@@ -1,0 +1,274 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package cryptolib
+
+import (
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha512"
+	"encoding/base64"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"io"
+	"time"
+
+	"aidanwoods.dev/go-paseto"
+	"github.com/dromara/carbon/v2"
+	"github.com/goccy/go-json"
+	"github.com/spf13/viper"
+	"golang.org/x/crypto/bcrypt"
+)
+
+const (
+	pasetoIssuer = "portalnesia.com"
+)
+
+func getPasetoKey() (paseto.V4AsymmetricSecretKey, paseto.V4AsymmetricPublicKey, paseto.V4SymmetricKey) {
+	symmetricKey, err := paseto.V4SymmetricKeyFromHex(viper.GetString("secret.crypto_key"))
+	if err != nil {
+		panic(err)
+	}
+
+	privateKey, err := paseto.NewV4AsymmetricSecretKeyFromHex(viper.GetString("secret.crypto_private"))
+	if err != nil {
+		panic(err)
+	}
+
+	publicKey := privateKey.Public()
+
+	return privateKey, publicKey, symmetricKey
+}
+
+func EncryptToken[D any](data D, extras ...func(*paseto.Token)) string {
+	privateKey, _, symmetricKey := getPasetoKey()
+
+	// encrypt data
+	tokenData := paseto.NewToken()
+	err := tokenData.Set("data", data)
+	if err != nil {
+		return ""
+	}
+	dataToken := tokenData.V4Encrypt(symmetricKey, nil)
+
+	now := time.Now()
+	token := paseto.NewToken()
+	token.SetIssuer(pasetoIssuer)
+	token.SetIssuedAt(now)
+	token.SetString("data", dataToken)
+
+	if len(extras) == 1 {
+		fn := extras[0]
+		fn(&token)
+	}
+
+	// sign data
+	signed := token.V4Sign(privateKey, nil)
+	return signed
+}
+
+func DecryptToken[D any](token string, exp time.Duration, validations ...func(parser *paseto.Parser)) (D, error) {
+	_, publicKey, symmetricKey := getPasetoKey()
+
+	parser := paseto.NewParserWithoutExpiryCheck()
+	parserEnc := paseto.NewParserWithoutExpiryCheck()
+
+	var (
+		tmp D
+	)
+
+	parser.AddRule(
+		paseto.IssuedBy(pasetoIssuer),
+	)
+
+	if len(validations) == 1 {
+		fn := validations[0]
+		fn(&parser)
+	}
+
+	tokenData, err := parser.ParseV4Public(publicKey, token, nil)
+	if err != nil {
+		return tmp, err
+	}
+
+	if exp != 0 {
+		issuedAt, err := tokenData.GetIssuedAt()
+		if err != nil {
+			return tmp, err
+		}
+		if time.Since(issuedAt) > exp {
+			return tmp, errors.New("token has expired")
+		}
+	}
+
+	encryptedData, err := tokenData.GetString("data")
+	if err != nil {
+		return tmp, err
+	}
+
+	tokenEnc, err := parserEnc.ParseV4Local(symmetricKey, encryptedData, nil)
+	if err != nil {
+		return tmp, err
+	}
+
+	var result D
+	err = tokenEnc.Get("data", &result)
+	if err != nil {
+		return tmp, err
+	}
+
+	return result, nil
+}
+
+func SignPaseto[D any](data D, extras ...func(*paseto.Token)) string {
+	privateKey, _, _ := getPasetoKey()
+
+	now := time.Now()
+	token := paseto.NewToken()
+	err := token.Set("data", data)
+	if err != nil {
+		return ""
+	}
+	token.SetIssuer(pasetoIssuer)
+	token.SetIssuedAt(now)
+	//token.SetString("data", dataToken)
+
+	if len(extras) == 1 {
+		fn := extras[0]
+		fn(&token)
+	}
+
+	// sign data
+	signed := token.V4Sign(privateKey, nil)
+	return signed
+}
+
+func VerifyPaseto[D any](token string, exp time.Duration, validations ...func(parser *paseto.Parser)) (D, error) {
+	_, publicKey, _ := getPasetoKey()
+
+	parser := paseto.NewParserWithoutExpiryCheck()
+
+	var (
+		tmp D
+	)
+
+	parser.AddRule(
+		paseto.IssuedBy(pasetoIssuer),
+	)
+
+	if len(validations) == 1 {
+		fn := validations[0]
+		fn(&parser)
+	}
+
+	tokenData, err := parser.ParseV4Public(publicKey, token, nil)
+	if err != nil {
+		return tmp, err
+	}
+
+	if exp != 0 {
+		issuedAt, err := tokenData.GetIssuedAt()
+		if err != nil {
+			return tmp, err
+		}
+		if time.Since(issuedAt) > exp {
+			return tmp, errors.New("token has expired")
+		}
+	}
+
+	var result D
+	err = tokenData.Get("data", &result)
+	if err != nil {
+		return tmp, err
+	}
+
+	return result, nil
+}
+
+// HashPassword menggunakan cost minimal 10 dan mengembalikan error
+func HashPassword(password string) (string, error) {
+	// Bcrypt memiliki limit 72 bytes. Jika lebih, ia akan memotongnya.
+	// Sebaiknya cek panjang input di sini jika perlu.
+	if len(password) > 72 {
+		return "", errors.New("password too long")
+	}
+
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost) // DefaultCost adalah 10
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
+}
+
+// CheckPassword membandingkan hash dengan input secara aman
+func CheckPassword(password, hashedPassword string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+	return err == nil
+}
+
+func SignImageURL(file string, exp *carbon.Carbon) (signature string, expired int64) {
+	var stringToSign string
+	if exp != nil {
+		expired = exp.Timestamp()
+		stringToSign = fmt.Sprintf("%s:%d", file, expired)
+	} else {
+		stringToSign = file
+	}
+	signatureByte := SignString(stringToSign)
+	signature = hex.EncodeToString(signatureByte)
+	return
+}
+
+func SignString(data string) []byte {
+	secret := viper.GetString("secret.crypto_key")
+	sig := hmac.New(sha512.New, []byte(secret))
+	sig.Write([]byte(data))
+	dataHmac := sig.Sum(nil)
+	return dataHmac
+}
+
+func GenerateRandomBytes(size int) ([]byte, error) {
+	b := make([]byte, size)
+	if _, err := io.ReadFull(rand.Reader, b); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func GenerateRandomString(size ...int) (string, error) {
+	s := 32
+	if len(size) == 1 {
+		s = size[0]
+	}
+	byt, err := GenerateRandomBytes(s)
+	if err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(byt), nil
+}
+
+func SignCursor(data map[string]any) (string, error) {
+	// 1. Marshal map jadi JSON bytes
+	jsonBytes, err := json.Marshal(data)
+	if err != nil {
+		return "", fmt.Errorf("json marshal failed: %w", err)
+	}
+
+	// 2. Encode JSON bytes ke Base64 (URL safe)
+	base64Cursor := base64.RawURLEncoding.EncodeToString(jsonBytes)
+
+	/*// 3. Generate HMAC SHA256 signature
+	h := hmac.New(sha256.New, []byte(viper.GetString("secret.crypto")))
+	h.Write([]byte(base64Cursor))
+	signature := hex.EncodeToString(h.Sum(nil))
+
+	// 4. Gabungkan base64 + tanda titik + signature
+	signedCursor := fmt.Sprintf("%s.%s", base64Cursor, signature)
+	return signedCursor, nil*/
+	return base64Cursor, nil
+}

@@ -8,10 +8,39 @@
 package repository
 
 import (
+	"APP_NAME/internal/dto"
+
 	"github.com/uptrace/bun"
 )
 
 type InsertOptions func(db *bun.InsertQuery) *bun.InsertQuery
 type SelectOptions func(db *bun.SelectQuery) *bun.SelectQuery
+
 type UpdateOptions func(db *bun.UpdateQuery) *bun.UpdateQuery
 type DeleteOptions func(db *bun.DeleteQuery) *bun.DeleteQuery
+
+type DBOpt struct {
+	Columns        []string
+	ExcludeColumns []string
+
+	// UPDATE
+	LockError      bool           // Will return error if no rows affected
+	OptimisticLock map[string]any // where lock column => old value
+	Relation       []string
+
+	Query *dto.Request
+
+	updateOpts []func(db *bun.UpdateQuery) *bun.UpdateQuery // Internal
+}
+
+type WithFn func(db *DBOpt)
+
+func withOptions(opts ...WithFn) DBOpt {
+	dbOpt := DBOpt{}
+	if len(opts) > 0 {
+		for _, opt := range opts {
+			opt(&dbOpt)
+		}
+	}
+	return dbOpt
+}

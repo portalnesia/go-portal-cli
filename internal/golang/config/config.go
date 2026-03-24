@@ -8,8 +8,13 @@
 package config
 
 import (
-	"github.com/dave/dst"
 	"go/ast"
+	"regexp"
+	"strings"
+
+	"github.com/dave/dst"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type InitConfig struct {
@@ -21,24 +26,27 @@ type InitConfig struct {
 }
 
 type AddServiceConfig struct {
-	Module  string
-	Name    string
-	Path    string
-	Version string
+	Module   string
+	Name     string
+	Path     string
+	PathName string
+	Version  string
 }
 
 type AddEndpointConfig struct {
-	Module      string
-	ServiceName string // ex: user
-	Name        string // GetUser
-	Path        string // endpoint path, include version
-	Method      string // GET, POST, PUT, PATCH, DELETE
+	Module          string
+	ServiceName     string // ex: user
+	ServicePathName string // ex: user
+	Name            string // GetUser
+	Path            string // endpoint path, include version
+	Method          string // GET, POST, PUT, PATCH, DELETE
 }
 
 type AddRepositoryConfig struct {
-	Module  string
-	Name    string
-	NoModel bool
+	Module   string
+	Name     string
+	PathName string
+	NoModel  bool
 }
 
 type Builder struct {
@@ -49,4 +57,13 @@ type Builder struct {
 	Err            error
 	DstFile        *dst.File
 	WithoutComment bool
+}
+
+func ParseName(name string) (structName, pathName string) {
+	// replace symbol to space
+	name = regexp.MustCompile(`[^a-zA-Z0-9]+`).ReplaceAllString(name, " ")
+	name = cases.Title(language.English).String(name)
+	structName = strings.ReplaceAll(name, " ", "")
+	pathName = strings.ToLower(strings.ReplaceAll(name, " ", "_"))
+	return
 }

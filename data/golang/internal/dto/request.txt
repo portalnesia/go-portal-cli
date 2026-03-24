@@ -9,82 +9,137 @@ package dto
 
 import (
 	"fmt"
+	"APP_NAME/internal/cerror"
+	"APP_NAME/internal/context"
+	"APP_NAME/internal/interface"
+	"strings"
+	"time"
+
+	"github.com/gofiber/fiber/v2"
 	"github.com/samber/lo"
 	"github.com/uptrace/bun"
-	"APP_NAME/internal/context"
-	"strings"
-	"sync"
-	"time"
+	"go.portalnesia.com/nullable"
+	"go.portalnesia.com/utils"
 )
 
 type Request struct {
-	Page     int              `query:"page"`
-	Total    int64            `query:"-"`
-	PageSize int              `query:"page_size"`
-	Start    int              `query:"-"`
-	Q        string           `query:"q"`
-	ctx      *context.Context `query:"-"`
-	done     bool             `query:"-"`
+	FullURL string `query:"-" json:"-" form:"-"`
+	Referer string `query:"-" json:"-" form:"-"`
 
-	Order          []string   `query:"order" json:"-" form:"-"` // array order.sort
-	OrderParsed    [][]string `query:"-" json:"-" form:"-"`     // [order,sort]
-	Cursor         MapQuery   `query:"cursor" json:"-" form:"-"`
-	CursorResponse string     `query:"-" json:"-" form:"-"`
+	Dashboard bool   `query:"dashboard" json:"-" form:"-"` // dashboard query
+	Admin     bool   `query:"admin" json:"-" form:"-"`     // admin query
+	Page      int    `query:"page" json:"-" form:"-"`
+	Total     int64  `query:"-" json:"-" form:"-"`
+	PageSize  int    `query:"page_size" json:"-" form:"-"`
+	Start     int    `query:"-" json:"-" form:"-"`
+	Q         string `query:"q" json:"-" form:"-"`
+	UserID    string `query:"user_id" json:"-" form:"-"`
+	//Env       string `query:"env" json:"-" form:"-"`
 
-	mux sync.RWMutex
+	ctx  *context.Context `query:"-"`
+	done bool             `query:"-"`
+
+	Order       []string   `query:"order" json:"-" form:"-"` // array order.sort
+	OrderParsed [][]string `query:"-" json:"-" form:"-"`     // [order,sort]
+	//Cursor         MapQuery   `query:"cursor" json:"-" form:"-"`
+	NextCursor         nullable.Type[iface.MapQuery] `query:"next_cursor" json:"-" form:"-"`
+	PrevCursor         nullable.Type[iface.MapQuery] `query:"prev_cursor" json:"-" form:"-"`
+	PrevCursorResponse string                        `query:"-" json:"-" form:"-"`
+	NextCursorResponse string                        `query:"-" json:"-" form:"-"`
+
+	DataOnly  bool `query:"data_only" json:"-" form:"-"`
+	TotalOnly bool `query:"total_only" json:"-" form:"-"`
+
+	FullResponse bool `query:"full_response" json:"-" form:"-"` // chords
+
+	// AggregateExprs maps a logical column name to its SQL aggregate expression.
+	// Columns in this map will use HAVING instead of WHERE for cursor filtering,
+	// and their expression will be used directly in ORDER BY.
+	// Example: {"created_at": "MAX(c.created_at)"}
+	AggregateExprs map[string]string `query:"-" json:"-" form:"-"`
+
+	// CursorCastExprs maps a logical column name to a PostgreSQL cast type used
+	// when building cursor WHERE conditions. This is necessary for columns whose
+	// DB type differs from the default Go JSON type (float64) — most notably
+	// PostgreSQL `real` (float4) columns, where the round-trip through JSON
+	// causes a float8 vs float4 precision mismatch that silently skips rows.
+	// Example: {"search_rank": "real"}
+	CursorCastExprs map[string]string `query:"-" json:"-" form:"-"`
+}
+
+func GetRequest(c *fiber.Ctx) (*Request, error) {
+	ctx := c.Locals("ctx").(*context.Context)
+	reqAny := c.Locals("dtoRequest")
+	if reqAny != nil {
+		if req, ok := reqAny.(*Request); ok {
+			return req, nil
+		}
+	}
+
+	var req Request
+	if err := c.QueryParser(&req); err != nil {
+		return nil, cerror.InvalidRequest(err)
+	}
+	req.Init(ctx)
+	c.Locals("dtoRequest", &req)
+	return &req, nil
 }
 
 func (d *Request) SetTotal(s int64) {
 	d.Total = s
 }
 
-func (d *Request) GetCursor() any {
-	return d.Cursor
+func (d *Request) GetNextCursor() *iface.MapQuery {
+	if !d.NextCursor.Valid {
+		return nil
+	}
+	return d.NextCursor.Ptr()
+}
+func (d *Request) GetPrevCursor() *iface.MapQuery {
+	if !d.PrevCursor.Valid {
+		return nil
+	}
+	return d.PrevCursor.Ptr()
 }
 
 func (d *Request) GetOrder() [][]string {
 	return d.OrderParsed
 }
 
-func (d *Request) GetPageSize() int {
-	d.mux.RLock()
-	defer d.mux.RUnlock()
-	return d.PageSize
+func (d *Request) GetDashboard() bool {
+	return d.Dashboard
 }
-
-func (d *Request) GetStart() int {
-	d.mux.RLock()
-	defer d.mux.RUnlock()
-	return d.Start
+func (d *Request) GetAdmin() bool {
+	return d.Admin
 }
-
-func (d *Request) GetPage() int {
-	d.mux.RLock()
-	defer d.mux.RUnlock()
-	return d.Page
-}
-
 func (d *Request) GetMethod() string {
-	d.mux.RLock()
-	defer d.mux.RUnlock()
 	return d.ctx.Method
 }
 
-func (d *Request) SetCursorResponse(s string) {
-	d.CursorResponse = s
+func (d *Request) GetPageSize() int {
+	return d.PageSize
+}
+func (d *Request) GetStart() int {
+	return d.Start
+}
+func (d *Request) GetPage() int {
+	return d.Page
+}
+
+func (d *Request) SetCursorResponse(prev, next string) {
+	d.PrevCursorResponse = prev
+	d.NextCursorResponse = next
 }
 
 func (d *Request) Init(ctx *context.Context) {
-	d.mux.Lock()
-	defer d.mux.Unlock()
-
 	if d.done {
 		return
 	}
 
 	d.ctx = ctx
-	if d.PageSize == 0 || d.PageSize > 50 {
-		d.PageSize = 15
+
+	if d.PageSize == 0 || d.PageSize > 500 {
+		d.PageSize = 25
 	}
 
 	if d.Q != "" {
@@ -96,6 +151,22 @@ func (d *Request) Init(ctx *context.Context) {
 		start = d.Page*d.PageSize - d.PageSize
 	}
 	d.Start = start
+
+	isAdmin := ctx.User != nil && ctx.User.CheckAdmin(nil)
+
+	/*if utils.IsTrue(d.Dashboard) || !ctx.IsInternal {
+		d.Dashboard = false
+		if isAdmin {
+			d.Dashboard = true
+		}
+	}*/
+
+	if utils.IsTrue(d.Admin) || !ctx.IsInternal {
+		d.Admin = false
+		if isAdmin {
+			d.Admin = true
+		}
+	}
 
 	if d.Order != nil && len(d.Order) > 0 {
 		d.OrderParsed = make([][]string, 0)
@@ -111,11 +182,19 @@ func (d *Request) Init(ctx *context.Context) {
 				sort,
 			})
 		}
+		for i, order := range d.OrderParsed {
+			if order[0] == "popular" {
+				// remove this sorting and add seen and seen_monthly
+				d.OrderParsed = append(d.OrderParsed[:i], d.OrderParsed[i+1:]...)
+				d.OrderParsed = append([][]string{{"seen_monthly", "desc"}, {"seen", "desc"}}, d.OrderParsed...)
+				break
+			}
+		}
 	}
 
-	if d.Cursor != nil {
-		parsed := make(map[string]interface{}, len(d.Cursor))
-		for col, raw := range d.Cursor {
+	if d.NextCursor.Valid {
+		parsed := make(map[string]interface{}, len(d.NextCursor.Data))
+		for col, raw := range d.NextCursor.Data {
 			if raw == nil {
 				continue
 			}
@@ -131,96 +210,295 @@ func (d *Request) Init(ctx *context.Context) {
 				parsed[col] = v
 			}
 		}
-		d.Cursor = parsed
+		d.NextCursor = nullable.NewType(iface.MapQuery(parsed))
+	} else if d.PrevCursor.Valid {
+		parsed := make(map[string]interface{}, len(d.PrevCursor.Data))
+		for col, raw := range d.PrevCursor.Data {
+			if raw == nil {
+				continue
+			}
+			switch v := raw.(type) {
+			case string:
+				// coba parse RFC3339, kalau gagal pakai string
+				if t, err := time.Parse(time.RFC3339, v); err == nil {
+					parsed[col] = t
+				} else {
+					parsed[col] = v
+				}
+			default:
+				parsed[col] = v
+			}
+		}
+		d.PrevCursor = nullable.NewType(iface.MapQuery(parsed))
 	}
 
+	//d.Env = env
+
 	d.done = true
+}
+
+func (d *Request) getAlias(column string) string {
+	switch column {
+	case "search_rank":
+		return "sr."
+	default:
+		// aggregate columns don't use a table alias; they resolve via their expression
+		if d.AggregateExprs != nil {
+			if _, ok := d.AggregateExprs[column]; ok {
+				return ""
+			}
+		}
+		return "?TableAlias."
+	}
+}
+
+// getColumnExpr returns the SQL expression for ORDER BY / HAVING.
+// For aggregate columns it returns the aggregate expression (e.g. "MAX(c.created_at)"),
+// for normal columns it returns alias+column.
+func (d *Request) getColumnExpr(column string) string {
+	if d.AggregateExprs != nil {
+		if expr, ok := d.AggregateExprs[column]; ok {
+			return expr
+		}
+	}
+	return d.getAlias(column) + column
+}
+
+// isAggregate reports whether the given column is an aggregate column.
+func (d *Request) isAggregate(column string) bool {
+	if d.AggregateExprs == nil {
+		return false
+	}
+	_, ok := d.AggregateExprs[column]
+	return ok
+}
+
+// getCursorCast returns the PostgreSQL cast type for the given column when used
+// in cursor comparison clauses, or an empty string if no cast is needed.
+//
+// Some columns require explicit casting because their DB type differs from the
+// default Go/JSON type (float64). The canonical example is `search_rank`, which
+// is computed by word_similarity() and returned as PostgreSQL `real` (float4).
+// Without casting, the float8 JSON literal (e.g. 0.33333334) does NOT exactly
+// equal the float4 column value (0.3333333432674408 as float8), silently
+// skipping rows at page boundaries and breaking backward pagination.
+//
+// CursorCastExprs can be set on the Request to override or add per-column casts.
+func (d *Request) getCursorCast(column string) string {
+	if d.CursorCastExprs != nil {
+		if cast, ok := d.CursorCastExprs[column]; ok {
+			return cast
+		}
+	}
+	// Built-in defaults — mirror the alias rules in getAlias().
+	switch column {
+	case "search_rank":
+		// word_similarity() always returns real (float4); cast the cursor literal
+		// to real so the comparison stays in float4 precision.
+		return "real"
+	}
+	return ""
+}
+
+func (d *Request) getOrderValue(requestValue string) string {
+	if d.PrevCursor.Valid {
+		if requestValue == "asc" {
+			return "desc"
+		}
+		return "asc"
+	}
+	return requestValue
 }
 
 // ListHelper
 //
 // defaultValue: [2]string. example: ["user_login","desc"]
 // availableOrderValue: [][]string. array of columns that can be ordered
-func (d *Request) ListHelper(defaultValue [2]string, availableOrderValue []string) func(db *bun.SelectQuery) *bun.SelectQuery {
+func (d *Request) ListHelper(defaultValue [2]string, availableOrderValue []string, fallbackPKColumn string) func(db *bun.SelectQuery) *bun.SelectQuery {
 	return func(db *bun.SelectQuery) *bun.SelectQuery {
-		query := make([]string, 0)
-    mapOrder := make([][]string, 0) // column => sort
-    if d.OrderParsed != nil {
-      for _, order := range d.OrderParsed {
-        k, v := order[0], order[1]
-        if lo.Contains(availableOrderValue, k) {
-          query = append(query, fmt.Sprintf("?TableAlias.%s %s", k, v))
-        }
-      }
+		orderQuery := make([]string, 0)
+		mapOrder := make([][]string, 0) // column => sort
 
-      mapOrder = d.OrderParsed
-    }
-    if len(query) == 0 {
-      k, v := defaultValue[0], defaultValue[1]
-      query = append(query, fmt.Sprintf("?TableAlias.%s %s", k, v))
-      mapOrder = [][]string{{defaultValue[0], defaultValue[1]}}
-      d.OrderParsed = mapOrder
-    }
+		if d.Q != "" {
+			orderQuery = []string{fmt.Sprintf("sr.search_rank %s", d.getOrderValue("desc"))}
+			mapOrder = [][]string{{"search_rank", "desc"}}
+			d.OrderParsed = mapOrder
+		} else if d.OrderParsed != nil {
+			for _, order := range d.OrderParsed {
+				k, v := order[0], order[1]
+				if lo.Contains(availableOrderValue, k) {
+					expr := d.getColumnExpr(k)
+					orderQuery = append(orderQuery, fmt.Sprintf("%s %s", expr, d.getOrderValue(v)))
+				}
+			}
+			mapOrder = d.OrderParsed
+		}
 
-    db = db.OrderExpr(strings.Join(query, ", "))
+		if len(orderQuery) == 0 {
+			k, v := defaultValue[0], defaultValue[1]
+			expr := d.getColumnExpr(k)
+			orderQuery = append(orderQuery, fmt.Sprintf("%s %s", expr, d.getOrderValue(v)))
+			mapOrder = [][]string{{defaultValue[0], defaultValue[1]}}
+			d.OrderParsed = mapOrder
+		}
+
+		// Tambahkan fallbackPKColumn ke ORDER BY jika belum ada,
+		// agar konsisten dengan cursor condition yang juga memakai fallbackPKColumn.
+		hasFallback := false
+		for _, o := range mapOrder {
+			if o[0] == fallbackPKColumn {
+				hasFallback = true
+				break
+			}
+		}
+		if !hasFallback {
+			fallbackExpr := d.getColumnExpr(fallbackPKColumn)
+			orderQuery = append(orderQuery, fmt.Sprintf("%s %s", fallbackExpr, d.getOrderValue("asc")))
+		}
+
+		db = db.OrderExpr(strings.Join(orderQuery, ", "))
 
 		if d.Page > 0 {
-      db = db.Offset(d.Start)
-    } else if d.Cursor != nil {
-      db = db.Offset(0)
+			db = db.Offset(d.Start).Limit(d.PageSize)
+		} else if !d.NextCursor.Valid && !d.PrevCursor.Valid {
+			// First page: fetch pageSize+1 to detect if a next page exists
+			db = db.Offset(0).Limit(d.PageSize + 1)
+		} else if d.NextCursor.Valid || d.PrevCursor.Valid {
+			db = db.Offset(0)
+			type WhereValue struct {
+				Clause string
+				Value  []any
+				Having bool // true = route to HAVING, false = route to WHERE
+			}
+			conditions := make([]WhereValue, 0)
 
-      type WhereValue struct {
-        Where string
-        Value []any
-      }
+			mapOrder = append(mapOrder, []string{
+				fallbackPKColumn, "asc",
+			}) // pastikan PK selalu ada di akhir untuk pagination yang konsisten
 
-      whereValue := make([]WhereValue, 0)
+			cursorData := d.NextCursor.Data
+			if !d.NextCursor.Valid {
+				cursorData = d.PrevCursor.Data
+			}
 
-      for i := range mapOrder {
-        var parts []string
-        var args []interface{}
+			for i := range mapOrder {
+				var parts []string
+				var args []interface{}
+				// Apakah ada kolom aggregate di baris i atau di j<i?
+				// Jika salah satu bagian dari clause ini aggregate, seluruh clause masuk HAVING.
+				hasAggregate := false
 
-        // untuk j < i: col_j = v_j
-        for j := 0; j < i; j++ {
-          colJ := mapOrder[j][0]
-          if cursor, ok := d.Cursor[colJ]; ok && cursor != nil {
-            parts = append(parts, fmt.Sprintf("?TableAlias.%s = ?", colJ))
-            args = append(args, d.Cursor[colJ])
-          }
-        }
+				// untuk j < i: col_j = v_j
+				for j := 0; j < i; j++ {
+					colJ := mapOrder[j][0]
+					if cursor, ok := cursorData[colJ]; ok && cursor != nil {
+						expr := d.getColumnExpr(colJ)
+						if cast := d.getCursorCast(colJ); cast != "" {
+							parts = append(parts, fmt.Sprintf("%s = ?::%s", expr, cast))
+						} else {
+							parts = append(parts, fmt.Sprintf("%s = ?", expr))
+						}
+						args = append(args, cursor)
+						if d.isAggregate(colJ) {
+							hasAggregate = true
+						}
+					}
+				}
 
-        // untuk i: col_i >/< v_i
-        colI := mapOrder[i][0]
-        dir := strings.ToLower(mapOrder[i][1])
-        op := "<"
-        if dir == "asc" {
-          op = ">"
-        }
+				// untuk i: col_i op v_i
+				colI := mapOrder[i][0]
+				expr := d.getColumnExpr(colI)
 
-        if cursor, ok := d.Cursor[colI]; ok && cursor != nil {
-          parts = append(parts, fmt.Sprintf("?TableAlias.%s %s ?", colI, op))
-          args = append(args, cursor)
-        }
+				dir := strings.ToLower(mapOrder[i][1])
+				var op string
+				if d.NextCursor.Valid {
+					// next_cursor: semua strict.
+					// DESC → <, ASC → >
+					// Cursor row tidak boleh ikut lagi di halaman berikutnya.
+					op = "<"
+					if dir == "asc" {
+						op = ">"
+					}
+				} else {
+					// prev_cursor: ORDER di-flip (DESC→ASC, ASC→DESC).
+					// dir = arah ORDER ASLI (sebelum flip).
+					// DESC asli → strict >, ASC asli → strict <
+					op = ">"
+					if dir == "asc" {
+						op = "<"
+					}
+				}
 
-        clause := strings.Join(parts, " AND ")
-        if len(args) > 0 && clause != "" {
-          whereValue = append(whereValue, WhereValue{
-            Where: clause,
-            Value: args,
-          })
-        }
-      }
+				if cursor, ok := cursorData[colI]; ok && cursor != nil {
+					if cast := d.getCursorCast(colI); cast != "" {
+						parts = append(parts, fmt.Sprintf("%s %s ?::%s", expr, op, cast))
+					} else {
+						parts = append(parts, fmt.Sprintf("%s %s ?", expr, op))
+					}
+					args = append(args, cursor)
+					if d.isAggregate(colI) {
+						hasAggregate = true
+					}
+				}
 
-      if len(whereValue) > 0 {
-        db = db.WhereGroup(" AND ", func(query *bun.SelectQuery) *bun.SelectQuery {
-          for _, wv := range whereValue {
-            query = query.WhereOr(wv.Where, wv.Value...)
-          }
-          return query
-        })
-      }
-    }
+				clause := strings.Join(parts, " AND ")
+				if len(args) > 0 && clause != "" {
+					conditions = append(conditions, WhereValue{
+						Clause: clause,
+						Value:  args,
+						Having: hasAggregate,
+					})
+				}
+			}
 
-		return db.Limit(d.PageSize)
+			// Pisahkan conditions ke WHERE vs HAVING
+			whereConditions := make([]WhereValue, 0)
+			havingConditions := make([]WhereValue, 0)
+			for _, c := range conditions {
+				if c.Having {
+					havingConditions = append(havingConditions, c)
+				} else {
+					whereConditions = append(whereConditions, c)
+				}
+			}
+
+			if len(whereConditions) > 0 {
+				db = db.WhereGroup(" AND ", func(query *bun.SelectQuery) *bun.SelectQuery {
+					for _, wv := range whereConditions {
+						query = query.WhereOr(wv.Clause, wv.Value...)
+					}
+					return query
+				})
+			}
+			if len(havingConditions) > 0 {
+				// bun only has Having(string, args...) — no HavingGroup/HavingOr.
+				// Build a single OR-joined HAVING clause manually.
+				havingParts := make([]string, 0, len(havingConditions))
+				havingArgs := make([]any, 0)
+				for _, wv := range havingConditions {
+					havingParts = append(havingParts, "("+wv.Clause+")")
+					havingArgs = append(havingArgs, wv.Value...)
+				}
+				db = db.Having("("+strings.Join(havingParts, " OR ")+")", havingArgs...)
+			}
+			db = db.Limit(d.PageSize + 1)
+		}
+		return db
 	}
+}
+
+func (d *Request) IsDataOnly() bool {
+	return d.DataOnly
+}
+
+func (d *Request) IsTotalOnly() bool {
+	return d.TotalOnly
+}
+
+type InternalMethod struct {
+	Method string `field:"method" json:"-" query:"-"`
+}
+
+func (m InternalMethod) GetMethod() string {
+	return m.Method
 }

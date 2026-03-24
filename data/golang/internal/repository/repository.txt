@@ -24,7 +24,7 @@ type NewRepositoryConfig struct {
 }
 
 func NewRepository(conf NewRepositoryConfig) Registry {
-	bs := base{conf.DB, conf.Log, conf.Env}
+	bs := &base{conf.DB, conf.Log, conf.Env}
 	return Registry{
 		Base: bs,
 	}

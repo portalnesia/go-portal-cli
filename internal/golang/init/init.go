@@ -27,7 +27,7 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 		cfg: cfg,
 	}
 
-	i := 40
+	i := 41
 	if cfg.Redis {
 		i += 2
 	}
@@ -82,8 +82,8 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 		"internal/cerror/parameter",
 		"internal/context/context",
 		"internal/dto/request",
-		"internal/dto/map_query",
 
+		"internal/interface/map_query",
 		"internal/interface/context",
 		"internal/interface/env",
 		"internal/interface/log",
@@ -92,6 +92,7 @@ func Init(parentWg *sync.WaitGroup, app *config.App, cfg *config2.InitConfig, re
 		"pkg/helper/main",
 		"pkg/migration/migration",
 		"pkg/validator/validator",
+		"pkg/cryptolib/paseto",
 		"cmd/completion",
 		"cmd/app",
 		"main",

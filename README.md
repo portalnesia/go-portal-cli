@@ -74,3 +74,16 @@ Flags:
 | -m        | --method  | HTTP method, example: GET, POST, PUT, PATCH, DELETE) |
 
 
+## Developer
+
+### Local Installation
+
+```bash
+go install .
+```
+
+### Local Remove
+
+```bash
+go clean -i .
+```

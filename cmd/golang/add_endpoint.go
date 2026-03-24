@@ -8,6 +8,8 @@
 package golang
 
 import (
+	"strings"
+
 	"github.com/fatih/color"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
@@ -17,7 +19,6 @@ import (
 	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
 	"go.portalnesia.com/portal-cli/pkg/helper"
 	util "go.portalnesia.com/utils"
-	"strings"
 )
 
 var (
@@ -70,8 +71,8 @@ var addEndpointCmd = &cobra.Command{
 			cfg.Method = "put"
 		}
 		cfg.Method = util.FirstToUpper(strings.ToLower(cfg.Method))
-		cfg.ServiceName = strings.ToLower(cfg.ServiceName)
-		cfg.Name = util.FirstToUpper(cfg.Name)
+		cfg.ServiceName, cfg.ServicePathName = config2.ParseName(cfg.ServiceName)
+		cfg.Name, _ = config2.ParseName(cfg.Name)
 		cfg.Path = strings.ToLower(cfg.Path)
 
 		appCtx := cmd.Context().Value("app")

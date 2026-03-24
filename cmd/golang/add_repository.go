@@ -9,14 +9,12 @@ package golang
 
 import (
 	"github.com/fatih/color"
+	"github.com/spf13/cobra"
 	"go.portalnesia.com/portal-cli/cmd/utils"
 	"go.portalnesia.com/portal-cli/internal/config"
 	bgolang "go.portalnesia.com/portal-cli/internal/golang"
 	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
 	"go.portalnesia.com/portal-cli/pkg/helper"
-	"strings"
-
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -48,7 +46,7 @@ var addRepositoryCmd = &cobra.Command{
 			_, _ = color.New(color.FgRed).Println("Error:", err)
 			return
 		}
-		cfg.Name = strings.ToLower(cfg.Name)
+		cfg.Name, cfg.PathName = config2.ParseName(cfg.Name)
 
 		appCtx := cmd.Context().Value("app")
 		if appCtx == nil {

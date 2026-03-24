@@ -8,17 +8,21 @@
 package utils
 
 import (
+	"bufio"
 	"fmt"
-	"github.com/fatih/color"
+	"os"
 	"strings"
+
+	"github.com/fatih/color"
 )
 
 func PromptInitBool(name string, value *bool) error {
 	yellow := color.New(color.FgYellow)
 
-	var tmp string
 	_, _ = yellow.Printf("%s? (y/N) ", name)
-	_, _ = fmt.Scanln(&tmp)
+	reader := bufio.NewReader(os.Stdin)
+	tmp, _ := reader.ReadString('\n')
+	tmp = strings.TrimSpace(tmp)
 	if tmp == "" {
 		return fmt.Errorf("%s required", name)
 	}
@@ -33,13 +37,16 @@ func PromptInitBool(name string, value *bool) error {
 func PromptInitString(name string, value *string, forcePromptAndOptional ...bool) error {
 	yellow := color.New(color.FgYellow)
 
-	var tmp string
-	if value != nil {
-		tmp = *value
+	if value == nil {
+		return fmt.Errorf("%s is nil", name)
 	}
+
+	tmp := *value
 	if len(forcePromptAndOptional) > 0 && forcePromptAndOptional[0] && tmp == "" {
 		_, _ = yellow.Printf("%s? ", name)
-		_, _ = fmt.Scanln(&tmp)
+		reader := bufio.NewReader(os.Stdin)
+		tmp, _ = reader.ReadString('\n')
+		tmp = strings.TrimSpace(tmp)
 	}
 
 	if (len(forcePromptAndOptional) <= 1 || (len(forcePromptAndOptional) > 1 && !forcePromptAndOptional[1])) && tmp == "" {

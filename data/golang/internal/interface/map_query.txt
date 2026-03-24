@@ -1,0 +1,47 @@
+/*
+ * Copyright (c) Portalnesia - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Putu Aditya <aditya@portalnesia.com>
+ */
+
+package iface
+
+import (
+	"encoding/base64"
+	"fmt"
+
+	"github.com/goccy/go-json"
+)
+
+type MapQuery map[string]any
+
+func VerifyMapQuery(encoded string) (MapQuery, error) {
+	/*parts := strings.Split(encoded, ".")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid cursor format")
+	}
+
+	base64Cursor := parts[0]
+	receivedSig := parts[1]
+
+	h := hmac.New(sha256.New, []byte(viper.GetString("secret.crypto")))
+	h.Write([]byte(base64Cursor))
+	expectedSig := hex.EncodeToString(h.Sum(nil))
+
+	if !hmac.Equal([]byte(receivedSig), []byte(expectedSig)) {
+		return nil, fmt.Errorf("invalid cursor signature")
+	}*/
+
+	jsonBytes, err := base64.RawURLEncoding.DecodeString(encoded)
+	if err != nil {
+		return nil, fmt.Errorf("hex decode failed: %w", err)
+	}
+
+	var cursor MapQuery
+	if err = json.Unmarshal(jsonBytes, &cursor); err != nil {
+		return nil, fmt.Errorf("json unmarshal failed: %w", err)
+	}
+
+	return cursor, nil
+}

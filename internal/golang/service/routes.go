@@ -9,24 +9,24 @@ package service
 
 import (
 	"fmt"
+	"go/parser"
+	"go/token"
+	"sync"
+
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"github.com/fatih/color"
 	config2 "go.portalnesia.com/portal-cli/internal/golang/config"
 	"go.portalnesia.com/portal-cli/pkg/helper"
-	"go.portalnesia.com/utils"
-	"go/parser"
-	"go/token"
-	"sync"
 )
 
 func (s *addService) addServiceRoutes(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 
-	serviceName := utils.Ucwords(s.cfg.Name)
-	group := fmt.Sprintf(`"/%s/%s"`, s.cfg.Version, s.cfg.Name)
+	serviceName := s.cfg.Name
+	group := fmt.Sprintf(`"/%s/%s"`, s.cfg.Version, s.cfg.Path)
 	if s.cfg.Version == "" {
-		group = fmt.Sprintf(`"/%s"`, s.cfg.Name)
+		group = fmt.Sprintf(`"/%s"`, s.cfg.Path)
 	}
 
 	_, _ = color.New(color.FgBlue).Printf("Generating routes\n")
@@ -221,14 +221,14 @@ func (s *addService) addServiceRoutes(wg *sync.WaitGroup, res chan<- config2.Bui
 
 	res <- config2.Builder{
 		DstFile:  file,
-		Pathname: fmt.Sprintf("internal/rest/routes/%s_route.go", s.cfg.Name),
+		Pathname: fmt.Sprintf("internal/rest/routes/%s_route.go", s.cfg.PathName),
 	}
 }
 
 func (s *addService) addToRoutesDst(wg *sync.WaitGroup, res chan<- config2.Builder) {
 	defer wg.Done()
 
-	serviceName := utils.Ucwords(s.cfg.Name)
+	serviceName := s.cfg.Name
 
 	// Parse file routes
 	resp := config2.Builder{
@@ -280,7 +280,7 @@ func (s *addEndpoint) addEndpointRoutes(wg *sync.WaitGroup, res chan<- config2.B
 
 	_, _ = color.New(color.FgBlue).Printf("Generating routes\n")
 
-	serviceName := utils.Ucwords(s.cfg.ServiceName)
+	serviceName := s.cfg.ServiceName
 
 	// Parse file routes
 	resp := config2.Builder{}
@@ -289,7 +289,7 @@ func (s *addEndpoint) addEndpointRoutes(wg *sync.WaitGroup, res chan<- config2.B
 	}()
 
 	fset := token.NewFileSet()
-	file, err := decorator.ParseFile(fset, s.app.Dir(fmt.Sprintf("internal/rest/routes/%s_route.go", s.cfg.ServiceName)), nil, parser.AllErrors)
+	file, err := decorator.ParseFile(fset, s.app.Dir(fmt.Sprintf("internal/rest/routes/%s_route.go", s.cfg.ServicePathName)), nil, parser.AllErrors)
 	if err != nil {
 		resp.Err = err
 		return
@@ -344,6 +344,6 @@ func (s *addEndpoint) addEndpointRoutes(wg *sync.WaitGroup, res chan<- config2.B
 
 	resp = config2.Builder{
 		DstFile:  file,
-		Pathname: fmt.Sprintf("internal/rest/routes/%s_route.go", s.cfg.ServiceName),
+		Pathname: fmt.Sprintf("internal/rest/routes/%s_route.go", s.cfg.ServicePathName),
 	}
 }

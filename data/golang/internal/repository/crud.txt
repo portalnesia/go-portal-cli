@@ -8,7 +8,6 @@
 package repository
 
 import (
-	"APP_NAME/internal/cerror"
 	iface "APP_NAME/internal/interface"
 
 	"github.com/uptrace/bun"
@@ -16,16 +15,19 @@ import (
 
 type CrudRepository[Model any] interface {
 	Create(ctx iface.Context, entity *Model) error
-	GetByPK(ctx iface.Context, entity *Model) (*Model, error)
-	UpdateByPK(ctx iface.Context, entity *Model, column ...string) error
+	GetByPK(ctx iface.Context, entity *Model, opt ...WithFn) (*Model, error)
+
+	UpdateByPK(ctx iface.Context, entity *Model, opt ...WithFn) error
 	DeleteByPK(ctx iface.Context, entity *Model) error
+	UpsertByPK(ctx iface.Context, entity *Model, opt ...WithFn) error
+	FirstOrUpsertByPK(ctx iface.Context, entity *Model, opt ...WithFn) (*Model, error)
 }
 
 type crudRepository[Model any] struct {
-	base
+	*base
 }
 
-func (r crudRepository[Model]) Create(ctx iface.Context, entity *Model) error {
+func (r *crudRepository[Model]) Create(ctx iface.Context, entity *Model) error {
 	db := r.getDatabase(ctx)
 	_, err := db.NewInsert().
 		Model(entity).
@@ -33,93 +35,38 @@ func (r crudRepository[Model]) Create(ctx iface.Context, entity *Model) error {
 	return err
 }
 
-func (r crudRepository[Model]) internalGet(ctx iface.Context, entity *Model, opts ...SelectOptions) (*Model, error) {
-	var result Model
-	db := r.getDatabase(ctx)
-	query := db.NewSelect().Model(entity)
-
-	if opts != nil && len(opts) > 0 {
-		for _, opt := range opts {
-			query = opt(query)
-		}
-	}
-
-	err := query.
-		Scan(ctx.DBContext(), &result)
-
-	return &result, err
-}
-
-func (r crudRepository[Model]) GetByPK(ctx iface.Context, entity *Model) (*Model, error) {
-	return r.internalGet(ctx, entity, func(db *bun.SelectQuery) *bun.SelectQuery {
+func (r *crudRepository[Model]) GetByPK(ctx iface.Context, entity *Model, withopt ...WithFn) (*Model, error) {
+	opt := withOptions(withopt...)
+	return dbGet(r.base, ctx, entity, func(db *bun.SelectQuery) *bun.SelectQuery {
 		return db.WherePK()
-	})
+	}, opt)
 }
 
-func (r crudRepository[Model]) internalUpdate(ctx iface.Context, entity *Model, column []string, opts ...UpdateOptions) error {
-	db := r.getDatabase(ctx)
-
-	query := db.NewUpdate().Model(entity)
-
-	if column != nil && len(column) > 0 {
-		query = query.Column(column...)
-	}
-
-	if opts != nil && len(opts) > 0 {
-		for _, opt := range opts {
-			query = opt(query)
-		}
-	}
-
-	_, err := query.Exec(ctx.DBContext())
-	return err
-}
-
-func (r crudRepository[Model]) UpdateByPK(ctx iface.Context, entity *Model, column ...string) error {
-	return r.internalUpdate(ctx, entity, column, func(db *bun.UpdateQuery) *bun.UpdateQuery {
+func (r *crudRepository[Model]) UpdateByPK(ctx iface.Context, entity *Model, opt ...WithFn) error {
+	op := withOptions(opt...)
+	return dbUpdate(r.base, ctx, entity, func(db *bun.UpdateQuery) *bun.UpdateQuery {
 		return db.WherePK()
-	})
+	}, op)
 }
 
-func (r crudRepository[Model]) internalDelete(ctx iface.Context, entity *Model, opts ...DeleteOptions) error {
-	db := r.getDatabase(ctx)
-
-	query := db.NewDelete().Model(entity)
-
-	if opts != nil && len(opts) > 0 {
-		for _, opt := range opts {
-			query = opt(query)
-		}
-	}
-
-	_, err := query.Exec(ctx.DBContext())
-	return err
-}
-
-func (r crudRepository[Model]) DeleteByPK(ctx iface.Context, entity *Model) error {
-	return r.internalDelete(ctx, entity, func(db *bun.DeleteQuery) *bun.DeleteQuery {
+func (r *crudRepository[Model]) DeleteByPK(ctx iface.Context, entity *Model) error {
+	return dbDelete(r.base, ctx, entity, func(db *bun.DeleteQuery) *bun.DeleteQuery {
 		return db.WherePK()
-	})
+	}, DBOpt{})
 }
 
-func (r crudRepository[Model]) internalUpsert(ctx iface.Context, entity *Model, getWhere SelectOptions, upsertColumn ...string) error {
-	db := r.getDatabase(ctx)
+func (r *crudRepository[Model]) UpsertByPK(ctx iface.Context, entity *Model, opt ...WithFn) error {
+	op := withOptions(opt...)
+	return dbUpsert(r.base, ctx, entity, func(db *bun.SelectQuery) *bun.SelectQuery {
+		return db.WherePK()
+	}, op)
+}
 
-	data, err := r.internalGet(ctx, entity, getWhere)
-	if err != nil {
-		if !cerror.IsNotFound(err) {
-			return err
-		}
+func (r *crudRepository[Model]) FirstOrUpsertByPK(ctx iface.Context, entity *Model, opt ...WithFn) (*Model, error) {
+	op := withOptions(opt...)
+	data, err := dbFirstOrUpsert[Model](r.base, ctx, entity, func(db *bun.SelectQuery) *bun.SelectQuery {
+		return db.WherePK()
+	}, op)
 
-		// Create new
-		_, err = db.NewInsert().Model(&entity).Exec(ctx.DBContext())
-		return err
-	}
-
-	query := db.NewUpdate().Model(&data).WherePK()
-	if len(upsertColumn) > 0 {
-		query = query.Column(upsertColumn...)
-	}
-	_, err = query.Exec(ctx.DBContext())
-	return err
+	return data, err
 }
